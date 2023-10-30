@@ -22,7 +22,7 @@ TERMINAL_TOKEN = "<|endoftext|>"
 SEED = 1
 UCB_BASE = 10
 UCB_CONSTANT = 4
-NUM_ROLLOUTS = 1
+NUM_ROLLOUTS = 3
 NUM_BEAMS = 1
 
 
@@ -223,16 +223,27 @@ if __name__ == "__main__":
         model_context=model_context,
         terminal_token_id=terminal_token_id,
     )
-    while not node.state[-1] == terminal_token_id:
+    plan = True
+    num_actions = 0
+    while plan:
         # Perform rollouts
-        for _ in range(NUM_ROLLOUTS):
+        for i in range(1, NUM_ROLLOUTS + 1):
             # Start at root
             node = root
+            level = 0
             # Selection (select a leaf node)
             while True:
                 if node.is_leaf_node:
+                    action = "Root" if node == root else node.action
+                    print(
+                        f"Selected | Action #: {num_actions} | Action: {action} | Level: {level} | Rollout #: {i}"  # noqa: E501
+                    )
                     break
                 node = max(node.children, key=policy)
+                level += 1
+            if node.state[-1] == terminal_token_id:
+                plan = False
+                break
             # Expansion (expand children, select one to rollout)
             # NB: If scores are the same, first node will always be selected.
             node = max(node.children, key=policy)
@@ -241,6 +252,9 @@ if __name__ == "__main__":
             text = model_context.tokenizer.decode(ids)
             code = extract_code(text)
             reward = compute_reward(code, problem)
-            import pdb
-
-            pdb.set_trace()
+            # Backpropagation (update node statistics)
+            while node:
+                node.visits += 1
+                node.observed_rewards.append(reward)
+                node = node.parent
+        num_actions += 1
