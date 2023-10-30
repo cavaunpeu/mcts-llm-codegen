@@ -64,24 +64,30 @@ class ModelContext:
     max_gen_horizon: int
     num_beams: int = NUM_BEAMS
 
+    def __post_init__(self):
+        self.cache = {}
+
     def generate(self, ids: List[int], next_token_only: bool = False):
-        input_ids = torch.LongTensor(ids).unsqueeze(0).to(device)
-        kwargs = (
-            {"max_new_tokens": 1}
-            if next_token_only
-            else {"max_length": self.max_gen_horizon}
-        )
-        return self.model.generate(
-            input_ids,
-            top_k=self.k,
-            num_beams=self.num_beams,
-            early_stopping=self.num_beams > 1,
-            return_dict_in_generate=True,
-            output_scores=True,
-            use_cache=True,
-            do_sample=self.k > 1,
-            **kwargs,
-        )  # type: ignore
+        key = (tuple(ids), next_token_only)
+        if key not in self.cache:
+            input_ids = torch.LongTensor(ids).unsqueeze(0).to(device)
+            kwargs = (
+                {"max_new_tokens": 1}
+                if next_token_only
+                else {"max_length": self.max_gen_horizon}
+            )
+            self.cache[key] = self.model.generate(
+                input_ids,
+                top_k=self.k,
+                num_beams=self.num_beams,
+                early_stopping=self.num_beams > 1,
+                return_dict_in_generate=True,
+                output_scores=True,
+                use_cache=True,
+                do_sample=self.k > 1,
+                **kwargs,
+            )  # type: ignore
+        return self.cache[key]
 
 
 class Node:
@@ -236,7 +242,7 @@ if __name__ == "__main__":
                 if node.is_leaf_node:
                     action = "Root" if node == root else node.action
                     print(
-                        f"Selected | Action #: {num_actions} | Action: {action} | Level: {level} | Rollout #: {i}"  # noqa: E501
+                        f"Selected | Action #: {num_actions:<2} | Action: {action:<5} | Level: {level:<2} | Rollout #: {i}"  # noqa: E501
                     )
                     break
                 node = max(node.children, key=policy)
