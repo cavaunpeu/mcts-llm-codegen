@@ -1,0 +1,3 @@
+[submodule "Code-AI-Tree-Search"]
+	path = Code-AI-Tree-Search
+	url = https://github.com/shunzh/Code-AI-Tree-Search.git
