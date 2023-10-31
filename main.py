@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import re
+from time import time
 from typing import List, Optional, Union
 import numpy as np
 import torch
@@ -248,6 +249,7 @@ if __name__ == "__main__":
     plan = True
     num_actions = 0
     while plan:
+        start = time()
         # Perform rollouts
         for i in range(1, NUM_ROLLOUTS + 1):
             # Start at root
@@ -278,4 +280,7 @@ if __name__ == "__main__":
                 node = node.parent
         # Take action, reset root
         node = root = max(root.children, key=lambda node: node.value)
+        print(
+            f"Action #: {num_actions:<2} | Action: {node.display_action:<7} | Elapsed: {time() - start:.2f}s"  # noqa: E501
+        )
         num_actions += 1
