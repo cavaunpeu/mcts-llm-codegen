@@ -111,6 +111,10 @@ class Node:
         self._children = []
 
     @property
+    def display_action(self):
+        return "root" if self.action is None else self.action
+
+    @property
     def is_leaf_node(self) -> bool:
         """
         If we have not yet expanded this node, it is a leaf node.
@@ -195,6 +199,14 @@ def compute_reward(code: str, problem: Problem) -> int:
     )
 
 
+def log_progress(
+    num_actions: int, root: Node, node: Node, level: int, rollout_index: int
+):
+    print(
+        f"State 'Tip': {root.state[-1]:<5} | Selection | Action #: {num_actions:<2} | Rollout #: {rollout_index} | Action: {node.display_action:<5} | Level: {level:<2}"  # noqa: E501
+    )
+
+
 if __name__ == "__main__":
     # Setup
     print("Loading model, tokenizer, etc...")
@@ -244,10 +256,7 @@ if __name__ == "__main__":
             # Selection (select a leaf node)
             while True:
                 if node.is_leaf_node:
-                    action = "Root" if node == root else node.action
-                    print(
-                        f"Selected | Action #: {num_actions:<2} | Action: {action:<5} | Level: {level:<2} | Rollout #: {i}"  # noqa: E501
-                    )
+                    log_progress(num_actions, root, node, level, i)
                     break
                 node = max(node.children, key=policy)
                 level += 1
@@ -267,4 +276,6 @@ if __name__ == "__main__":
                 node.visits += 1
                 node.observed_rewards.append(reward)
                 node = node.parent
+        # Take action, reset root
+        node = root = max(root.children, key=lambda node: node.value)
         num_actions += 1
