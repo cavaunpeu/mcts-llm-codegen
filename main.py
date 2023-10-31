@@ -204,7 +204,7 @@ def log_progress(
     num_actions: int, root: Node, node: Node, level: int, rollout_index: int
 ):
     print(
-        f"State 'Tip': {root.state[-1]:<5} | Selection | Action #: {num_actions:<2} | Rollout #: {rollout_index} | Action: {node.display_action:<5} | Level: {level:<2}"  # noqa: E501
+        f"Action #: {num_actions:<2} | State 'Tip': {root.state[-1]:<5} | Selection | Rollout #: {rollout_index} | Action: {node.display_action:<5} | Level: {level:<2}"  # noqa: E501
     )
 
 
