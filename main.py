@@ -196,7 +196,8 @@ def compute_reward(code: str, problem: Problem) -> int:
 
 
 if __name__ == "__main__":
-    # Setup model
+    # Setup
+    print("Loading model, tokenizer, etc...")
     device = (
         torch.device("cuda")
         if torch.cuda.is_available() and not NO_CUDA
@@ -208,6 +209,10 @@ if __name__ == "__main__":
     )
     model.to(device)
     (terminal_token_id,) = tokenizer.encode(TERMINAL_TOKEN)
+    model_context = ModelContext(
+        model, tokenizer, max_gen_horizon=MAX_GEN_HORIZON, k=K
+    )  # noqa: E501
+    policy = Policy()
 
     # Set seeds
     np.random.seed(SEED)
@@ -215,12 +220,11 @@ if __name__ == "__main__":
     torch.cuda.manual_seed_all(SEED)
 
     # Load problem
-    problem = Problem(TEST_PROBLEMS_DIR, TEST_PROBLEM_INDEX)
-    state = tokenizer.encode(problem.prompt)
 
     # Run MCTS
-    model_context = ModelContext(model, tokenizer, max_gen_horizon=MAX_GEN_HORIZON, k=K)
-    policy = Policy()
+    print("Running MCTS...")
+    problem = Problem(TEST_PROBLEMS_DIR, TEST_PROBLEM_INDEX)
+    state = tokenizer.encode(problem.prompt)
     node = root = Node(
         state=state,
         action=None,
