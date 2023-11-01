@@ -251,11 +251,24 @@ def compute_reward(code: str, problem: Problem) -> int:
     )
 
 
-def log_progress(
-    num_actions: int, root: Node, node: Node, level: int, rollout_index: int
+def log_info(
+    num_actions: int,
+    root: Optional[Node],
+    node: Node,
+    level: Optional[int],
+    rollout_index: Optional[int],
+    token: Optional[str],
+    elapsed: Optional[float],
 ):
     print(
-        f"Action #: {num_actions:<2} | State 'Tip': {root.state[-1]:<5} | Selection | Rollout #: {rollout_index} | Action: {node.display_action:<5} | Level: {level:<2}"  # noqa: E501
+        f"Step: {('Prediction' if elapsed is not None else 'Selection'):<10} |",  # noqa: E501
+        f"Action #: {num_actions:<2} |",
+        f"State 'Tip': {root.state[-1] if root else 'N/A':<6} |",
+        f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
+        f"Action: {node.display_action if node else 'N/A':<6} |",
+        f"Level: {level if level is not None else 'N/A':<4} |",
+        f"Token: {repr(token) if token is not None else 'N/A':<5} |",
+        f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
     )
 
 
@@ -300,9 +313,9 @@ if __name__ == "__main__":
         parent=None,
         model_context=model_context,
     )
-    plan = True
     num_actions = 0
-    while plan:
+    result = list(state)
+    while True:
         start = time()
         # Perform rollouts
         for i in range(1, NUM_ROLLOUTS + 1):
@@ -312,29 +325,36 @@ if __name__ == "__main__":
             # Selection (select a leaf node)
             while True:
                 if node.is_leaf_node:
-                    log_progress(num_actions, root, node, level, i)
+                    log_info(
+                        num_actions, root, node, level, i, None, None
+                    )  # noqa: E501
                     break
                 node = max(node.children, key=policy)
                 level += 1
-            if node.state[-1] == terminal_token_id:
-                plan = False
-                break
-            # Expansion (expand children, select one to rollout)
-            # NB: If scores are the same, first node will always be selected.
-            node = max(node.children, key=policy)
-            # Simulate (simulate rollout)
-            output = model_context.generate(node.state)
-            text = model_context.tokenizer.decode(output["sequence"])
-            code = extract_code(text)
-            reward = compute_reward(code, problem)
-            # Backpropagation (update node statistics)
-            while node:
-                node.visits += 1
-                node.observed_rewards.append(reward)
-                node = node.parent
+            if not node.state[-1] == terminal_token_id:
+                # Expansion (expand children, select one to rollout)
+                # NB: If scores are the same, first node will always be selected.  # noqa: E501
+                node = max(node.children, key=policy)
+                # Simulate (simulate rollout)
+                output = model_context.generate(node.state)
+                text = model_context.tokenizer.decode(output["sequence"])
+                code = extract_code(text)
+                reward = compute_reward(code, problem)
+                # Backpropagation (update node statistics)
+                while node:
+                    node.visits += 1
+                    node.observed_rewards.append(reward)
+                    node = node.parent
         # Take action, reset root
         node = root = max(root.children, key=lambda node: node.value)
-        print(
-            f"Action #: {num_actions:<2} | Action: {node.display_action:<7} | Elapsed: {time() - start:.2f}s"  # noqa: E501
+        # Log action
+        elapsed = time() - start
+        log_info(
+            num_actions, None, node, None, None, tokenizer.decode(node.action), elapsed
         )
+        result.append(node.action)
         num_actions += 1
+        # Check if we're done
+        if node.state[-1] == terminal_token_id:
+            break
+    print(f"\n>>> Result:\n\n{extract_code(tokenizer.decode(result))}")
