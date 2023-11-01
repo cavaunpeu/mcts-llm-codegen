@@ -316,6 +316,7 @@ if __name__ == "__main__":
         model_context=model_context,
     )
     num_actions = 0
+    rewards_cache = {}
     result = list(state)
     while True:
         start = time()
@@ -341,7 +342,11 @@ if __name__ == "__main__":
                 output = model_context.generate(node.state)
                 text = model_context.tokenizer.decode(output["sequence"])
                 code = extract_code(text)
-                reward = compute_reward(code, problem)
+                # Compute reward
+                key = (code, problem)
+                if key not in rewards_cache:
+                    rewards_cache[key] = compute_reward(code, problem)
+                reward = rewards_cache[key]
                 # Backpropagation (update node statistics)
                 while node:
                     node.visits += 1
