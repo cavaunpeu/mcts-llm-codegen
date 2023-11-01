@@ -257,7 +257,6 @@ def log_info(
     num_actions: int,
     root: Optional[Node],
     node: Node,
-    level: Optional[int],
     rollout_index: Optional[int],
     token: Optional[str],
     elapsed: Optional[float],
@@ -268,7 +267,6 @@ def log_info(
         f"State 'Tip': {root.state[-1] if root else 'N/A':<6} |",
         f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
         f"Action: {node.display_action if node else 'N/A':<6} |",
-        f"Level: {level if level is not None else 'N/A':<4} |",
         f"Token: {repr(token) if token is not None else 'N/A':<5} |",
         f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
     )
@@ -324,16 +322,12 @@ if __name__ == "__main__":
         for i in range(1, NUM_ROLLOUTS + 1):
             # Start at root
             node = root
-            level = 0
             # Selection (select a leaf node)
             while True:
                 if node.is_leaf_node:
-                    log_info(
-                        num_actions, root, node, level, i, None, None
-                    )  # noqa: E501
+                    log_info(num_actions, root, node, i, None, None)
                     break
                 node = max(node.children, key=policy)
-                level += 1
             if not node.state[-1] == terminal_token_id:
                 # Expansion (expand children, select one to rollout)
                 # NB: If scores are the same, first node will always be selected.  # noqa: E501
@@ -357,7 +351,12 @@ if __name__ == "__main__":
         # Log action
         elapsed = time() - start
         log_info(
-            num_actions, None, node, None, None, tokenizer.decode(node.action), elapsed
+            num_actions,
+            None,
+            node,
+            None,
+            tokenizer.decode(node.action),
+            elapsed,
         )
         result.append(node.action)
         num_actions += 1
