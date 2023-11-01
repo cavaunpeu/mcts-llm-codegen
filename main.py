@@ -71,6 +71,8 @@ class OutputTrie:
         self.root = OutputTrieNode(id=-1)
 
     def insert(self, sequence: List[int], scores: List[torch.Tensor]):
+        input_seq_len = len(sequence) - len(scores)
+        scores = [None] * input_seq_len + scores  # type: ignore
         node = self.root
         for id, tensor in zip(sequence, scores):
             if id not in node.children:
@@ -141,7 +143,7 @@ class ModelContext:
         output = self._generate(ids, next_token_only)
         self.cache.insert(
             output["sequence"],
-            [None] * (len(ids)) + output["scores"],
+            output["scores"],
         )
         return output
 
