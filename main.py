@@ -280,6 +280,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--debug", action="store_true", help="Debug mode", default=False
     )
+    parser.add_argument(
+        "--K", type=int, help="Number of expanded children", default=K
+    )  # noqa: E501
+    parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
     args = parser.parse_args()
     # Setup
     print("Loading model, tokenizer, etc...")
@@ -297,7 +301,7 @@ if __name__ == "__main__":
     model_context = ModelContext(
         model,
         tokenizer,
-        k=K,
+        k=args.K,
         terminal_token_id=terminal_token_id,
         max_gen_horizon=MAX_GEN_HORIZON,
     )  # noqa: E501
@@ -328,7 +332,7 @@ if __name__ == "__main__":
     while True:
         start = time()
         # Perform rollouts
-        for i in range(1, NUM_ROLLOUTS + 1):
+        for i in range(1, args.num_rollouts + 1):
             # Start at root
             node = root
             # Selection (select a leaf node)
@@ -374,7 +378,9 @@ if __name__ == "__main__":
         # Check if we're done
         if node.state[-1] == terminal_token_id:
             break
-    print(f"\n>>> Result:\n\n{extract_code(tokenizer.decode(result))}")
+    code = extract_code(tokenizer.decode(result))
+    reward = compute_reward(code, problem)
+    print(f"\n>>> Result:\n\n{code}")
     print(
-        f"\n>>> Elapsed: {total_elapsed:.3f}s | Generations: {model_context.generations}"  # noqa: E501
+        f"\n>>> Reward: {reward} | Elapsed: {total_elapsed:.3f}s | Generations: {model_context.generations}"  # noqa: E501
     )
