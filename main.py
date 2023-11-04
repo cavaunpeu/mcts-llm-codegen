@@ -1,3 +1,4 @@
+import argparse
 from collections import defaultdict
 from dataclasses import dataclass
 import re
@@ -17,7 +18,7 @@ MODEL_NAME = "gpt2"
 MODEL_PATH = "models/1.5B"
 TEST_PROBLEMS_DIR = "APPS/test"
 MAX_GEN_HORIZON = 1024
-K = 1
+K = 3
 TEST_PROBLEM_INDEX = 4136
 NO_CUDA = False
 TERMINAL_TOKEN = "<|endoftext|>"
@@ -113,6 +114,7 @@ class ModelContext:
 
     def __post_init__(self):
         self.cache = OutputTrie(self.terminal_token_id)
+        self.generations = 0
 
     def _generate(self, ids: List[int], next_token_only: bool = False):
         input_ids = torch.LongTensor(ids).unsqueeze(0).to(device)
@@ -128,12 +130,13 @@ class ModelContext:
             return_dict_in_generate=True,
             output_scores=True,
             use_cache=True,
-            do_sample=self.k > 1,
+            do_sample=False,
             **kwargs,
         )  # type: ignore
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
         scores = [scores.squeeze(0) for scores in output.scores]
+        self.generations += 1
         return {"sequence": sequence, "scores": scores}
 
     def generate(self, ids: List[int], next_token_only: bool = False):
@@ -267,12 +270,17 @@ def log_info(
         f"State 'Tip': {root.state[-1] if root else 'N/A':<6} |",
         f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
         f"Action: {node.display_action if node else 'N/A':<6} |",
-        f"Token: {repr(token) if token is not None else 'N/A':<5} |",
+        f"Token: {repr(token) if token is not None else 'N/A':<6} |",
         f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
     )
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--debug", action="store_true", help="Debug mode", default=False
+    )
+    args = parser.parse_args()
     # Setup
     print("Loading model, tokenizer, etc...")
     device = (
@@ -314,6 +322,7 @@ if __name__ == "__main__":
         model_context=model_context,
     )
     num_actions = 0
+    total_elapsed = 0
     rewards_cache = {}
     result = list(state)
     while True:
@@ -325,7 +334,8 @@ if __name__ == "__main__":
             # Selection (select a leaf node)
             while True:
                 if node.is_leaf_node:
-                    log_info(num_actions, root, node, i, None, None)
+                    if args.debug:
+                        log_info(num_actions, root, node, i, None, None)
                     break
                 node = max(node.children, key=policy)
             if not node.state[-1] == terminal_token_id:
@@ -360,7 +370,11 @@ if __name__ == "__main__":
         )
         result.append(node.action)
         num_actions += 1
+        total_elapsed += elapsed
         # Check if we're done
         if node.state[-1] == terminal_token_id:
             break
     print(f"\n>>> Result:\n\n{extract_code(tokenizer.decode(result))}")
+    print(
+        f"\n>>> Elapsed: {total_elapsed:.3f}s | Generations: {model_context.generations}"  # noqa: E501
+    )
