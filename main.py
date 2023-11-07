@@ -313,7 +313,7 @@ def log_info(
         f"State 'Tip': {root.state[-1] if root else 'N/A':<6} |",
         f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
         f"Action: {node.display_action if node else 'N/A':<6} |",
-        f"Token: {repr(token) if token is not None else 'N/A':<6} |",
+        f"Token: {repr(token) if token is not None else 'N/A':<7} |",
         f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
     )
 
@@ -324,7 +324,6 @@ class MCTS:
     model_context: ModelContext  # type: ignore
     policy: Policy
     num_rollouts: int
-    terminal_token_id: int
     debug: bool
 
     def __post_init__(self):
@@ -333,6 +332,7 @@ class MCTS:
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
         self.tokenizer = self.model_context.tokenizer
+        self.ctx = self.model_context
 
     def run(self, remote: bool = False):
         print("Running MCTS...")
@@ -361,14 +361,12 @@ class MCTS:
                             log_info(num_actions, root, node, i, None, None)
                         break
                     node = max(node.children, key=self.policy)
-                if not node.state[-1] == self.terminal_token_id:
+                if not node.state[-1] == self.ctx.terminal_token_id:
                     # Expansion (expand children, select one to rollout)
                     # NB: If scores are the same, first node will always be selected.  # noqa: E501
                     node = max(node.children, key=self.policy)
                     # Simulate (simulate rollout)
-                    output = self.model_context.generate(
-                        node.state, remote=remote
-                    )  # noqa: E501
+                    output = self.ctx.generate(node.state, remote=remote)  # noqa: E501
                     text = self.tokenizer.decode(output["sequence"])
                     code = extract_code(text)
                     # Compute reward
@@ -397,13 +395,13 @@ class MCTS:
             num_actions += 1
             total_elapsed += elapsed
             # Check if we're done
-            if node.state[-1] == self.terminal_token_id:
+            if node.state[-1] == self.ctx.terminal_token_id:
                 break
         code = extract_code(self.tokenizer.decode(result))
         reward = compute_reward(code, self.problem)
         print(f"\n>>> Result:\n\n{code}")
         print(
-            f"\n>>> Reward: {reward} | Elapsed: {total_elapsed:.3f}s | Generations: {self.model_context.generations}"  # noqa: E501
+            f"\n>>> Reward: {reward} | Elapsed: {total_elapsed:.3f}s | Generations: {self.ctx.generations}"  # noqa: E501
         )
 
 
@@ -442,7 +440,6 @@ def main():
         model_context,
         policy,
         args.num_rollouts,
-        model_context.terminal_token_id,
         args.debug,  # noqa: E501
     )
     # Run
