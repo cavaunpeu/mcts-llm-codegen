@@ -1,6 +1,7 @@
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 import re
 from time import time
 from typing import List, Optional, Union
@@ -123,35 +124,51 @@ class OutputTrie:
             return output
 
 
+@stub.function(
+    mounts=[
+        modal.Mount.from_local_dir(
+            Path(__file__).parent / "models", remote_path="/root/models"
+        )
+    ]
+)
+def load_model(model_path: str, eos_token_id: int):
+    return transformers.AutoModelForCausalLM.from_pretrained(
+        model_path, pad_token_id=eos_token_id
+    )
+
+
 @stub.cls(gpu="any")
 @dataclass
 class ModelContext:
     model_path: str
-    tokenizer: Union[
-        transformers.PreTrainedTokenizer, transformers.PreTrainedTokenizerFast
-    ]
+    model_name: str
     k: int
-    terminal_token_id: int
+    terminal_token: str
     max_gen_horizon: int
     no_cuda: bool = NO_CUDA
     num_beams: int = NUM_BEAMS
 
-    def __post_init__(self):
-        self.cache = OutputTrie(self.terminal_token_id)
+    @modal.method()
+    def __post_init__(self) -> None:
+        import transformers
+
         self.generations = 0
+        # Setup device
         self.device = (
             torch.device("cuda")
             if torch.cuda.is_available() and not self.no_cuda
             else torch.device("cpu")
         )
-
-    def __enter__(self) -> None:
-        import transformers
-
-        self.model = transformers.AutoModelForCausalLM.from_pretrained(
-            self.model_path, pad_token_id=self.tokenizer.eos_token_id
-        )
+        # Load tokenizer
+        tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
+        (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
+        # Load model
+        self.model = load_model(self.model_path, tokenizer.eos_token_id)
         self.model.to(self.device)
+        # Setup cache
+        self.cache = OutputTrie(self.terminal_token_id)
+        # Set remaining attributes
+        self.tokenizer = tokenizer
 
     @modal.method()
     def _generate(self, ids: List[int], next_token_only: bool = False):
@@ -408,16 +425,12 @@ class ModelContext:
 
 @stub.local_entrypoint()
 def main():
-    import transformers
-
-    tokenizer = transformers.AutoTokenizer.from_pretrained(MODEL_NAME)
-    (terminal_token_id,) = tokenizer.encode(TERMINAL_TOKEN)
     model_context = ModelContext(
-        "models/1.5B",
-        tokenizer,
-        k=3,
-        terminal_token_id=terminal_token_id,
-        max_gen_horizon=1024,
+        MODEL_PATH,
+        MODEL_NAME,
+        k=K,
+        terminal_token=TERMINAL_TOKEN,
+        max_gen_horizon=MAX_GEN_HORIZON,
     )  # noqa: E501
     output = model_context.generate([1, 2, 3], remote=True)
     print(output)
