@@ -1,7 +1,6 @@
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 import re
 from time import time
 from typing import List, Optional, Union
@@ -35,51 +34,49 @@ NUM_ROLLOUTS = 3
 # Modal deploy
 stub = modal.Stub(
     "mcts-llm-codegen",
-    image=modal.Image.debian_slim().pip_install_from_requirements(
-        "requirements.txt"
-    ),  # noqa: E501
+    image=modal.Image.from_registry("nvcr.io/nvidia/pytorch:22.12-py3")
+    .pip_install(
+        "torch==2.0.1+cu118", index_url="https://download.pytorch.org/whl/cu118"
+    )
+    .pip_install("transformers", "gdown")
+    .run_commands(
+        # Download 1.5B param model
+        "gdown 1svUcwtqL6AD_Ti0eXJS03AaMdS7HDZ0d -O /root/",
+        # Extract model
+        "mkdir -p /root/models",
+        "tar -xvf /root/models_1.5B.tar -C /root/models",
+    ),
 )
-# IMAGE = Image.from_registry("nvcr.io/nvidia/pytorch:22.12-py3").pip_install(
-#     "torch==2.0.1+cu118", index_url="https://download.pytorch.org/whl/cu118"
-# )
-# stub = Stub("mcts-llm-codegen", image=IMAGE)
 
 
-@stub.function()
-def square(x):
-    print("This code is running on a remote worker!")
-    return x**2
+# class Problem:
+#     def __init__(self, base_path: str, idx: int):
+#         self.dir = f"{base_path}/{idx}"
+#         self.input_output_path = f"{self.dir}/input_output.json"
+#         self.question_path = f"{self.dir}/question.txt"
+#         self.solutions_path = f"{self.dir}/solutions.json"
+#         self._prompt = None
+
+#     @property
+#     def prompt(self):
+#         if self._prompt is None:
+#             self._prompt = self._generate_prompt()
+#         return self._prompt
+
+#     def _generate_prompt(self):
+#         prompt = "\nQUESTION:\n"
+#         with open(self.question_path, "r") as f:
+#             data = f.readlines()
+#             data = "".join(data)
+#             prompt += data
+#         prompt += "\nUse Standard Input format"
+#         prompt += "\nANSWER:\n"
+#         return prompt
 
 
-class Problem:
-    def __init__(self, base_path: str, idx: int):
-        self.dir = f"{base_path}/{idx}"
-        self.input_output_path = f"{self.dir}/input_output.json"
-        self.question_path = f"{self.dir}/question.txt"
-        self.solutions_path = f"{self.dir}/solutions.json"
-        self._prompt = None
-
-    @property
-    def prompt(self):
-        if self._prompt is None:
-            self._prompt = self._generate_prompt()
-        return self._prompt
-
-    def _generate_prompt(self):
-        prompt = "\nQUESTION:\n"
-        with open(self.question_path, "r") as f:
-            data = f.readlines()
-            data = "".join(data)
-            prompt += data
-        prompt += "\nUse Standard Input format"
-        prompt += "\nANSWER:\n"
-        return prompt
+# # add test that makes prompt equal to: '\nQUESTION:\nA + B is often used as an example of the easiest problem possible to show some contest platform. However, some scientists have observed that sometimes this problem is not so easy to get accepted. Want to try?\n\n\n-----Input-----\n\nThe input contains two integers a and b (0 ≤ a, b ≤ 10^3), separated by a single space.\n\n\n-----Output-----\n\nOutput the sum of the given integers.\n\n\n-----Examples-----\nInput\n5 14\n\nOutput\n19\n\nInput\n381 492\n\nOutput\n873\nUse Standard Input format\nANSWER:\n'
 
 
-# add test that makes prompt equal to: '\nQUESTION:\nA + B is often used as an example of the easiest problem possible to show some contest platform. However, some scientists have observed that sometimes this problem is not so easy to get accepted. Want to try?\n\n\n-----Input-----\n\nThe input contains two integers a and b (0 ≤ a, b ≤ 10^3), separated by a single space.\n\n\n-----Output-----\n\nOutput the sum of the given integers.\n\n\n-----Examples-----\nInput\n5 14\n\nOutput\n19\n\nInput\n381 492\n\nOutput\n873\nUse Standard Input format\nANSWER:\n'
-
-
-@stub.cls()
 @dataclass
 class OutputTrieNode:
     id: int
@@ -124,19 +121,6 @@ class OutputTrie:
             return output
 
 
-@stub.function(
-    mounts=[
-        modal.Mount.from_local_dir(
-            Path(__file__).parent / "models", remote_path="/root/models"
-        )
-    ]
-)
-def load_model(model_path: str, eos_token_id: int):
-    return transformers.AutoModelForCausalLM.from_pretrained(
-        model_path, pad_token_id=eos_token_id
-    )
-
-
 @stub.cls(gpu="any")
 @dataclass
 class ModelContext:
@@ -148,10 +132,7 @@ class ModelContext:
     no_cuda: bool = NO_CUDA
     num_beams: int = NUM_BEAMS
 
-    @modal.method()
     def __post_init__(self) -> None:
-        import transformers
-
         self.generations = 0
         # Setup device
         self.device = (
@@ -163,7 +144,11 @@ class ModelContext:
         tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
         (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
         # Load model
-        self.model = load_model(self.model_path, tokenizer.eos_token_id)
+        print("Loading model...")
+        self.model = transformers.AutoModelForCausalLM.from_pretrained(
+            self.model_path, pad_token_id=tokenizer.eos_token_id
+        )
+        print("Model loaded; moving to device...")
         self.model.to(self.device)
         # Setup cache
         self.cache = OutputTrie(self.terminal_token_id)
@@ -190,7 +175,7 @@ class ModelContext:
         )  # type: ignore
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
-        scores = [scores.squeeze(0) for scores in output.scores]
+        scores = [scores.squeeze(0).cpu() for scores in output.scores]
         self.generations += 1
         return {"sequence": sequence, "scores": scores}
 
@@ -433,7 +418,12 @@ def main():
         max_gen_horizon=MAX_GEN_HORIZON,
     )  # noqa: E501
     output = model_context.generate([1, 2, 3], remote=True)
-    print(output)
+    import pdb
+
+    pdb.set_trace()
+
+
+# print(output)
 
 
 # if __name__ == "__main__":
