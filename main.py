@@ -1,6 +1,7 @@
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
+import os
 import re
 from time import time
 from typing import List, Optional
@@ -15,6 +16,10 @@ import sys
 
 sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore
+
+
+# Suppress noisy warnings from reward evaluation code
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 MODEL_NAME = "gpt2"
@@ -325,7 +330,9 @@ def log_info(
 
 @stub.cls(
     gpu="any",
-    secret=modal.Secret.from_dict({"TOKENIZERS_PARALLELISM": "false"}),
+    secret=modal.Secret.from_dict(
+        {"TOKENIZERS_PARALLELISM": os.environ["TOKENIZERS_PARALLELISM"]}
+    ),
     container_idle_timeout=60 * 2,
     mounts=[
         modal.Mount.from_local_dir(
