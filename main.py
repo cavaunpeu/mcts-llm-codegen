@@ -198,6 +198,7 @@ class ModelContext:
         next_token_only: bool = False,
         remote: bool = False,  # noqa: E501
     ):
+        print(f"generate was called with remote: {remote}")
         output = self.cache.search(ids, next_token_only)
         if output:
             return output
