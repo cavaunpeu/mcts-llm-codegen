@@ -119,7 +119,7 @@ class OutputTrie:
             return output
 
 
-@stub.cls(gpu="any")
+@stub.cls(gpu="any", container_idle_timeout=60 * 2)
 class ModelContext:
     def __init__(
         self,
@@ -140,32 +140,32 @@ class ModelContext:
         self.max_gen_horizon = max_gen_horizon
         self.no_cuda = no_cuda
         self.num_beams = num_beams
+        # Initialize
+        self.generations = 0
+        print(f"Loading tokenizer, cwd is: {os.getcwd()}")
+        tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
+        (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
+        self.tokenizer = tokenizer
+        self.cache = OutputTrie(self.terminal_token_id)
+
+    def __enter__(self):
         # Set seed
         np.random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
-        self.generations = 0
         # Setup device
         self.device = (
             torch.device("cuda")
             if torch.cuda.is_available() and not self.no_cuda
             else torch.device("cpu")
         )
-        # Load tokenizer
-        print(f"Loading tokenizer, cwd is: {os.getcwd()}")
-        tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
-        (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
         # Load model
         print(f"Loading model, cwd is: {os.getcwd()}")
         self.model = transformers.AutoModelForCausalLM.from_pretrained(
-            self.model_path, pad_token_id=tokenizer.eos_token_id
+            self.model_path, pad_token_id=self.tokenizer.eos_token_id
         )
         print(f"Model loaded; moving to device {self.device}; cwd is: {os.getcwd()}")
         self.model.to(self.device)
-        # Setup cache
-        self.cache = OutputTrie(self.terminal_token_id)
-        # Set remaining attributes
-        self.tokenizer = tokenizer
 
     @modal.method()
     def _generate(self, ids: List[int], next_token_only: bool = False):
@@ -347,8 +347,6 @@ class MCTS:
         self.ctx = self.model_context
 
     def run(self):
-        # Warmup
-        self.ctx.generate([1, 2, 3])
         # Run
         print("Running MCTS...")
         state = self.tokenizer.encode(self.problem.prompt)
