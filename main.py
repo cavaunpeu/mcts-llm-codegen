@@ -1,18 +1,16 @@
 import argparse
-from collections import defaultdict
-from dataclasses import dataclass
 import os
 import re
+import sys
+from collections import defaultdict
+from dataclasses import dataclass
 from time import time
 from typing import List, Optional
+
 import modal
 import numpy as np
-
 import torch
-
 import transformers
-
-import sys
 
 sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore
