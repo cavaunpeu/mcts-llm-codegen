@@ -137,8 +137,6 @@ class ModelContext:
         self.max_gen_horizon = max_gen_horizon
         self.no_cuda = no_cuda
         self.num_beams = num_beams
-
-    def __enter__(self) -> None:
         self.generations = 0
         # Setup device
         self.device = (
@@ -321,7 +319,6 @@ def log_info(
     print(
         f"Step: {('Prediction' if elapsed is not None else 'Selection'):<10} |",  # noqa: E501
         f"Action #: {num_actions:<2} |",
-        f"State 'Tip': {root.state[-1] if root else 'N/A':<6} |",
         f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
         f"Action: {node.display_action if node else 'N/A':<6} |",
         f"Token: {repr(token) if token is not None else 'N/A':<7} |",
@@ -441,13 +438,12 @@ if __name__ == "__main__":
             terminal_token=TERMINAL_TOKEN,
             max_gen_horizon=MAX_GEN_HORIZON,
         )
-        model_context.generate([1, 2, 3], next_token_only=True, remote=args.remote)
-        # mcts = MCTS(
-        #     problem,
-        #     model_context,
-        #     policy,
-        #     args.num_rollouts,
-        #     args.debug,  # noqa: E501
-        # )
-        # # Run
-        # mcts.run(remote=args.remote)
+        mcts = MCTS(
+            problem,
+            model_context,
+            policy,
+            args.num_rollouts,
+            args.debug,  # noqa: E501
+        )
+        # Run
+        mcts.run(remote=args.remote)
