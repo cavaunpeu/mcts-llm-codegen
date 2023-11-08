@@ -119,17 +119,26 @@ class OutputTrie:
 
 
 @stub.cls(gpu="any")
-@dataclass
 class ModelContext:
-    model_path: str
-    model_name: str
-    k: int
-    terminal_token: str
-    max_gen_horizon: int
-    no_cuda: bool = NO_CUDA
-    num_beams: int = NUM_BEAMS
+    def __init__(
+        self,
+        model_path: str,
+        model_name: str,
+        k: int,
+        terminal_token: str,
+        max_gen_horizon: int,
+        no_cuda: bool = NO_CUDA,
+        num_beams: int = NUM_BEAMS,
+    ):
+        self.model_path = model_path
+        self.model_name = model_name
+        self.k = k
+        self.terminal_token = terminal_token
+        self.max_gen_horizon = max_gen_horizon
+        self.no_cuda = no_cuda
+        self.num_beams = num_beams
 
-    def __post_init__(self) -> None:
+    def __enter__(self) -> None:
         self.generations = 0
         # Setup device
         self.device = (
@@ -154,6 +163,7 @@ class ModelContext:
 
     @modal.method()
     def _generate(self, ids: List[int], next_token_only: bool = False):
+        start = time()
         input_ids = torch.LongTensor(ids).unsqueeze(0).to(self.device)
         kwargs = (
             {"max_new_tokens": 1}
@@ -170,10 +180,11 @@ class ModelContext:
             do_sample=False,
             **kwargs,
         )  # type: ignore
+        self.generations += 1
+        print(f"Generation {self.generations} took {time() - start:.3f}s")
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
         scores = [scores.squeeze(0).cpu() for scores in output.scores]
-        self.generations += 1
         return {"sequence": sequence, "scores": scores}
 
     def generate(
@@ -405,7 +416,7 @@ class MCTS:
         )
 
 
-def parse_args():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--remote", action="store_true", default=False)
     parser.add_argument(
@@ -418,29 +429,25 @@ def parse_args():
     parser.add_argument(
         "--test_problem_index", type=str, default=TEST_PROBLEM_INDEX
     )  # noqa: E501
-    known_args, _ = parser.parse_known_args()
-    return known_args
-
-
-@stub.local_entrypoint()
-def main():
-    # Setup
-    args = parse_args()
-    problem = Problem(TEST_PROBLEMS_DIR, args.test_problem_index)
-    policy = Policy()
-    model_context = ModelContext(
-        MODEL_PATH,
-        MODEL_NAME,
-        k=args.K,
-        terminal_token=TERMINAL_TOKEN,
-        max_gen_horizon=MAX_GEN_HORIZON,
-    )  # noqa: E501
-    mcts = MCTS(
-        problem,
-        model_context,
-        policy,
-        args.num_rollouts,
-        args.debug,  # noqa: E501
-    )
-    # Run
-    mcts.run(remote=args.remote)
+    args = parser.parse_args()
+    with stub.run():
+        # Setup
+        problem = Problem(TEST_PROBLEMS_DIR, args.test_problem_index)
+        policy = Policy()
+        model_context = ModelContext(
+            MODEL_PATH,
+            MODEL_NAME,
+            k=args.K,
+            terminal_token=TERMINAL_TOKEN,
+            max_gen_horizon=MAX_GEN_HORIZON,
+        )
+        model_context.generate([1, 2, 3], next_token_only=True, remote=args.remote)
+        # mcts = MCTS(
+        #     problem,
+        #     model_context,
+        #     policy,
+        #     args.num_rollouts,
+        #     args.debug,  # noqa: E501
+        # )
+        # # Run
+        # mcts.run(remote=args.remote)
