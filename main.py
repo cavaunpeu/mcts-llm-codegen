@@ -16,6 +16,10 @@ sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore
 
 
+# Suppress noisy warnings from reward evaluation code
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
 MODEL_NAME = "gpt2"
 MODEL_PATH = "models/1.5B"
 TEST_PROBLEMS_DIR = "APPS/test"
@@ -30,7 +34,7 @@ NUM_BEAMS = 1
 K = 3
 TEST_PROBLEM_INDEX = 4136
 NUM_ROLLOUTS = 3
-# Modal deploy
+# Modal config
 stub = modal.Stub(
     "mcts-llm-codegen",
     image=modal.Image.from_registry("nvcr.io/nvidia/pytorch:22.12-py3")
@@ -117,12 +121,10 @@ class OutputTrie:
             return output
 
 
-@stub.cls(gpu="any")
 class ModelContext:
     def __init__(
         self,
         k: int,
-        remote: bool,
         model_path: str = MODEL_PATH,
         model_name: str = MODEL_NAME,
         terminal_token: str = TERMINAL_TOKEN,
@@ -131,43 +133,39 @@ class ModelContext:
         num_beams: int = NUM_BEAMS,
     ):
         self.k = k
-        self.remote = remote
         self.model_path = model_path
         self.model_name = model_name
         self.terminal_token = terminal_token
         self.max_gen_horizon = max_gen_horizon
         self.no_cuda = no_cuda
         self.num_beams = num_beams
+
+    def initialize(self):
+        # Initialize
+        self.generations = 0
+        # Load tokenizer
+        tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
+        (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
+        self.tokenizer = tokenizer
+        # Initialize cache
+        self.cache = OutputTrie(self.terminal_token_id)
         # Set seed
         np.random.seed(SEED)
         torch.manual_seed(SEED)
         torch.cuda.manual_seed_all(SEED)
-        self.generations = 0
         # Setup device
         self.device = (
             torch.device("cuda")
             if torch.cuda.is_available() and not self.no_cuda
             else torch.device("cpu")
         )
-        # Load tokenizer
-        print(f"Loading tokenizer, cwd is: {os.getcwd()}")
-        tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
-        (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
         # Load model
-        print(f"Loading model, cwd is: {os.getcwd()}")
         self.model = transformers.AutoModelForCausalLM.from_pretrained(
-            self.model_path, pad_token_id=tokenizer.eos_token_id
+            self.model_path, pad_token_id=self.tokenizer.eos_token_id
         )
-        print(f"Model loaded; moving to device {self.device}; cwd is: {os.getcwd()}")
         self.model.to(self.device)
-        # Setup cache
-        self.cache = OutputTrie(self.terminal_token_id)
-        # Set remaining attributes
-        self.tokenizer = tokenizer
 
-    @modal.method()
     def _generate(self, ids: List[int], next_token_only: bool = False):
-        start = time()
         input_ids = torch.LongTensor(ids).unsqueeze(0).to(self.device)
         kwargs = (
             {"max_new_tokens": 1}
@@ -185,9 +183,6 @@ class ModelContext:
             **kwargs,
         )  # type: ignore
         self.generations += 1
-        print(
-            f"Generate was called with remote = {self.remote} | Generation {self.generations} took {time() - start:.3f}s on {self.device}"
-        )  # noqa: E501
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
         scores = [scores.squeeze(0).cpu() for scores in output.scores]
@@ -201,8 +196,7 @@ class ModelContext:
         output = self.cache.search(ids, next_token_only)
         if output:
             return output
-        func = self._generate.remote if self.remote else self._generate.local
-        output = func(ids, next_token_only)
+        output = self._generate(ids, next_token_only)
         self.cache.insert(
             output["sequence"],
             output["scores"],
@@ -332,21 +326,39 @@ def log_info(
     )
 
 
-@dataclass
+@stub.cls(
+    gpu="any",
+    secret=modal.Secret.from_dict(
+        {"TOKENIZERS_PARALLELISM": os.environ["TOKENIZERS_PARALLELISM"]}
+    ),
+    container_idle_timeout=60 * 2,
+    mounts=[
+        modal.Mount.from_local_dir(
+            TEST_PROBLEMS_DIR, remote_path=f"/root/{TEST_PROBLEMS_DIR}"
+        )
+    ],
+)
 class MCTS:
-    problem: Problem
-    model_context: ModelContext  # type: ignore
-    policy: Policy
-    num_rollouts: int
-    debug: bool
+    def __init__(
+        self,
+        k: int,
+        test_problem_index: int,
+        num_rollouts: int,
+        debug: bool,
+    ):
+        self.problem = Problem(TEST_PROBLEMS_DIR, test_problem_index)
+        self.policy = Policy()
+        self.k = k
+        self.num_rollouts = num_rollouts
+        self.debug = debug
 
-    def __post_init__(self):
-        self.tokenizer = self.model_context.tokenizer
-        self.ctx = self.model_context
+    def __enter__(self):
+        self.ctx = ModelContext(self.k)
+        self.ctx.initialize()
+        self.tokenizer = self.ctx.tokenizer
 
+    @modal.method()
     def run(self):
-        # Warmup
-        self.ctx.generate([1, 2, 3])
         # Run
         print("Running MCTS...")
         state = self.tokenizer.encode(self.problem.prompt)
@@ -355,7 +367,7 @@ class MCTS:
             action=None,
             prob=None,
             parent=None,
-            model_context=self.model_context,
+            model_context=self.ctx,
         )
         num_actions = 0
         total_elapsed = 0
@@ -432,16 +444,10 @@ if __name__ == "__main__":
     )  # noqa: E501
     args = parser.parse_args()
     with stub.run():
-        # Setup
-        problem = Problem(TEST_PROBLEMS_DIR, args.test_problem_index)
-        policy = Policy()
-        model_context = ModelContext(k=args.K, remote=args.remote)
         mcts = MCTS(
-            problem,
-            model_context,
-            policy,
+            args.K,
+            args.test_problem_index,
             args.num_rollouts,
             args.debug,
         )
-        # Run
-        mcts.run()
+        mcts.run.remote() if args.remote else mcts.run.local()
