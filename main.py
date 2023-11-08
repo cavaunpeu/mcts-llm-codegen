@@ -137,6 +137,10 @@ class ModelContext:
         self.max_gen_horizon = max_gen_horizon
         self.no_cuda = no_cuda
         self.num_beams = num_beams
+        # Set seed
+        np.random.seed(SEED)
+        torch.manual_seed(SEED)
+        torch.cuda.manual_seed_all(SEED)
         self.generations = 0
         # Setup device
         self.device = (
@@ -149,6 +153,7 @@ class ModelContext:
         (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
         # Load model
         print("Loading model...")
+        print(self.device)
         self.model = transformers.AutoModelForCausalLM.from_pretrained(
             self.model_path, pad_token_id=tokenizer.eos_token_id
         )
@@ -179,7 +184,9 @@ class ModelContext:
             **kwargs,
         )  # type: ignore
         self.generations += 1
-        print(f"Generation {self.generations} took {time() - start:.3f}s")
+        print(
+            f"Generation {self.generations} took {time() - start:.3f}s on {self.device}"
+        )  # noqa: E501
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
         scores = [scores.squeeze(0).cpu() for scores in output.scores]
@@ -321,7 +328,7 @@ def log_info(
         f"Action #: {num_actions:<2} |",
         f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
         f"Action: {node.display_action if node else 'N/A':<6} |",
-        f"Token: {repr(token) if token is not None else 'N/A':<7} |",
+        f"Token: {repr(token) if token is not None else 'N/A':<8} |",
         f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
     )
 
@@ -335,14 +342,11 @@ class MCTS:
     debug: bool
 
     def __post_init__(self):
-        # Set seeds
-        np.random.seed(SEED)
-        torch.manual_seed(SEED)
-        torch.cuda.manual_seed_all(SEED)
         self.tokenizer = self.model_context.tokenizer
         self.ctx = self.model_context
 
     def run(self, remote: bool = False):
+        # Run
         print("Running MCTS...")
         state = self.tokenizer.encode(self.problem.prompt)
         node = root = Node(
