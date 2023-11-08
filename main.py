@@ -122,17 +122,19 @@ class OutputTrie:
 class ModelContext:
     def __init__(
         self,
-        model_path: str,
-        model_name: str,
         k: int,
-        terminal_token: str,
-        max_gen_horizon: int,
+        remote: bool,
+        model_path: str = MODEL_PATH,
+        model_name: str = MODEL_NAME,
+        terminal_token: str = TERMINAL_TOKEN,
+        max_gen_horizon: int = MAX_GEN_HORIZON,
         no_cuda: bool = NO_CUDA,
         num_beams: int = NUM_BEAMS,
     ):
+        self.k = k
+        self.remote = remote
         self.model_path = model_path
         self.model_name = model_name
-        self.k = k
         self.terminal_token = terminal_token
         self.max_gen_horizon = max_gen_horizon
         self.no_cuda = no_cuda
@@ -196,13 +198,12 @@ class ModelContext:
         self,
         ids: List[int],
         next_token_only: bool = False,
-        remote: bool = False,  # noqa: E501
     ):
-        print(f"generate was called with remote: {remote}")
+        print(f"generate was called with remote: {self.remote}")
         output = self.cache.search(ids, next_token_only)
         if output:
             return output
-        func = self._generate.remote if remote else self._generate.local
+        func = self._generate.remote if self.remote else self._generate.local
         output = func(ids, next_token_only)
         self.cache.insert(
             output["sequence"],
@@ -318,7 +319,6 @@ def compute_reward(code: str, problem: Problem) -> int:
 
 def log_info(
     num_actions: int,
-    root: Optional[Node],
     node: Node,
     rollout_index: Optional[int],
     token: Optional[str],
@@ -346,7 +346,7 @@ class MCTS:
         self.tokenizer = self.model_context.tokenizer
         self.ctx = self.model_context
 
-    def run(self, remote: bool = False):
+    def run(self):
         # Run
         print("Running MCTS...")
         state = self.tokenizer.encode(self.problem.prompt)
@@ -371,7 +371,7 @@ class MCTS:
                 while True:
                     if node.is_leaf_node:
                         if self.debug:
-                            log_info(num_actions, root, node, i, None, None)
+                            log_info(num_actions, node, i, None, None)
                         break
                     node = max(node.children, key=self.policy)
                 if not node.state[-1] == self.ctx.terminal_token_id:
@@ -379,7 +379,7 @@ class MCTS:
                     # NB: If scores are the same, first node will always be selected.  # noqa: E501
                     node = max(node.children, key=self.policy)
                     # Simulate (simulate rollout)
-                    output = self.ctx.generate(node.state, remote=remote)  # noqa: E501
+                    output = self.ctx.generate(node.state)  # noqa: E501
                     text = self.tokenizer.decode(output["sequence"])
                     code = extract_code(text)
                     # Compute reward
@@ -398,7 +398,6 @@ class MCTS:
             elapsed = time() - start
             log_info(
                 num_actions,
-                None,
                 node,
                 None,
                 self.tokenizer.decode(node.action),
@@ -436,19 +435,13 @@ if __name__ == "__main__":
         # Setup
         problem = Problem(TEST_PROBLEMS_DIR, args.test_problem_index)
         policy = Policy()
-        model_context = ModelContext(
-            MODEL_PATH,
-            MODEL_NAME,
-            k=args.K,
-            terminal_token=TERMINAL_TOKEN,
-            max_gen_horizon=MAX_GEN_HORIZON,
-        )
+        model_context = ModelContext(k=args.K, remote=args.remote)
         mcts = MCTS(
             problem,
             model_context,
             policy,
             args.num_rollouts,
-            args.debug,  # noqa: E501
+            args.debug,
         )
         # Run
-        mcts.run(remote=args.remote)
+        mcts.run()
