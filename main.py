@@ -1,6 +1,7 @@
 import argparse
 from collections import defaultdict
 from dataclasses import dataclass
+import os
 import re
 from time import time
 from typing import List, Optional
@@ -151,15 +152,15 @@ class ModelContext:
             else torch.device("cpu")
         )
         # Load tokenizer
+        print(f"Loading tokenizer, cwd is: {os.getcwd()}")
         tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
         (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
         # Load model
-        print("Loading model...")
-        print(self.device)
+        print(f"Loading model, cwd is: {os.getcwd()}")
         self.model = transformers.AutoModelForCausalLM.from_pretrained(
             self.model_path, pad_token_id=tokenizer.eos_token_id
         )
-        print("Model loaded; moving to device...")
+        print(f"Model loaded; moving to device {self.device}; cwd is: {os.getcwd()}")
         self.model.to(self.device)
         # Setup cache
         self.cache = OutputTrie(self.terminal_token_id)
@@ -187,7 +188,7 @@ class ModelContext:
         )  # type: ignore
         self.generations += 1
         print(
-            f"Generation {self.generations} took {time() - start:.3f}s on {self.device}"
+            f"Generate was called with remote = {self.remote} | Generation {self.generations} took {time() - start:.3f}s on {self.device}"
         )  # noqa: E501
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
@@ -199,7 +200,6 @@ class ModelContext:
         ids: List[int],
         next_token_only: bool = False,
     ):
-        print(f"generate was called with remote: {self.remote}")
         output = self.cache.search(ids, next_token_only)
         if output:
             return output
@@ -347,6 +347,8 @@ class MCTS:
         self.ctx = self.model_context
 
     def run(self):
+        # Warmup
+        self.ctx.generate([1, 2, 3])
         # Run
         print("Running MCTS...")
         state = self.tokenizer.encode(self.problem.prompt)
