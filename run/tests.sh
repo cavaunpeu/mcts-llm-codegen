@@ -1,1 +1,1 @@
-docker-compose up test
+docker-compose up --build test
