@@ -151,3 +151,11 @@ print(a + b)
 ✓ App completed.
 ➜  mcts-llm-codegen git:(main)
 ```
+
+## Trie-like cache
+
+In MCTS using LLMs, given some prefix state, we're doing both next token prediction ("expansion" step) and full sequence prediction (simulation step). Assuming that we simply take the argmax sequence (no "sampling"), this implies redundant computation. For instance, in a given "simulation" step, if a prefix of `[1, 2, 3]` generates `[4, 5, 6]`, then a next token prediction task given `[1, 2, 3, 4]` should generate a `5` *without* having to redo inference. We codify this caching logic in the `OutputTrie` class.
+
+## Running tests
+
+You can run tests (primarily against the `OutputTrie`) from within the Docker container by running `run/tests.sh`.
