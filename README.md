@@ -11,7 +11,7 @@ This repository contains a reimplementation of ["Planning with Large Language Mo
 
 ## What do you mean by code generation?
 
-The prompt for test problem 4136 is given below. The goal of code generation is to complete this prompt in a way that passes the associated test cases. A successful output might look like . "MCTS with LLMs," detailed by the authors above, is one way to do this.
+The prompt for test problem 4136 is given below.
 
 ```
 QUESTION:
@@ -44,3 +44,12 @@ Output
 Use Standard Input format
 ANSWER:
 ```
+
+The goal of code generation is to complete this prompt in a way that passes the associated test cases. A successful output might look like:
+
+```
+a, b = map(int, input().split())
+print(a + b)
+```
+
+"MCTS with LLMs," detailed by the authors above, is one way to do this.
