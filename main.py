@@ -359,8 +359,6 @@ class MCTS:
 
     @modal.method()
     def run(self):
-        # Run
-        print("Running MCTS...")
         state = self.tokenizer.encode(self.problem.prompt)
         node = root = Node(
             state=state,
@@ -440,10 +438,14 @@ if __name__ == "__main__":
     )  # noqa: E501
     parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
     parser.add_argument(
-        "--test_problem_index", type=str, default=TEST_PROBLEM_INDEX
+        "--test_problem_index",
+        type=str,
+        default=TEST_PROBLEM_INDEX,
+        choices=os.listdir(TEST_PROBLEMS_DIR),
     )  # noqa: E501
     args = parser.parse_args()
     with stub.run():
+        print(f"Running MCTS on test problem {args.test_problem_index}...")
         mcts = MCTS(
             args.K,
             args.test_problem_index,
