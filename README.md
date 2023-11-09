@@ -7,7 +7,7 @@ This repository contains a reimplementation of ["Planning with Large Language Mo
 1. First, clone this repository and submodules via: `git clone --recurse-submodules git@github.com:cavaunpeu/mcts-llm-codegen.git`.`
 2. Ensure that you have [Docker](https://docs.docker.com/desktop/install/mac-install/) installed.
 2. Follow Modal's simple setup instructions: `pip install modal && modal setup`. Once finished, you will have Modal credentials in `~/.modal.toml`. Modal offers you $30 of free compute credits per month, more than sufficient to run this code (on a remote GPU).
-3. **Finally, run: `chmod u+x run/* && run/app.sh`.** This will generate code for [APPS](https://huggingface.co/datasets/codeparrot/apps) dataset test problem 4136, by default. Currently, we only offer problems `0001, 0002, 0003, 0004, 0005, 4136`.
+3. **Finally, run: `chmod u+x run/* && run/app.sh`.** This will generate code for [APPS](https://huggingface.co/datasets/codeparrot/apps) dataset test problem 4136, by default. Currently, we only offer problems `0001, 0002, 0003, 0004, 0005, 4136`. To generate code for a different problem, run `run/app.sh <problem_id>`. For example, `run/app.sh 0001` will generate code for test problem 0001.
 
 ## What do you mean by code generation?
 
