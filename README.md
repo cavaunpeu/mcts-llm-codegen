@@ -159,3 +159,16 @@ In MCTS using LLMs, given some prefix state, we're doing both next token predict
 ## Running tests
 
 You can run tests (primarily against the `OutputTrie`) from within the Docker container by running `run/tests.sh`.
+
+## References
+
+```
+@article{zhang2023planning,
+  title={Planning with Large Language Models for Code Generation},
+  author={Zhang, Shun and Chen, Zhenfang and Shen, Yikang and Ding, Mingyu and Tenenbaum, Joshua B. and Gan, Chuang},
+  journal={arXiv preprint arXiv:2303.05510v1},
+  year={2023},
+  url={https://arxiv.org/abs/2303.05510v1},
+  accessed={October 8, 2023}
+}
+```
