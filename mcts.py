@@ -29,7 +29,7 @@ stub = modal.Stub(
 
 
 @stub.cls(
-    gpu="any",
+    # gpu="any",
     secret=modal.Secret.from_dict(
         {"TOKENIZERS_PARALLELISM": os.environ["TOKENIZERS_PARALLELISM"]}
     ),

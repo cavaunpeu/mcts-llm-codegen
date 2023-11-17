@@ -2,17 +2,9 @@ from mcts import stub, MCTS
 from util import parse_args
 
 
-PARAMS = [
-    {"k": 1, "num_rollouts": 1},
-    {"k": 1, "num_rollouts": 2},
-    {"k": 1, "num_rollouts": 3},
-    {"k": 2, "num_rollouts": 1},
-    {"k": 2, "num_rollouts": 2},
-    {"k": 2, "num_rollouts": 3},
-    {"k": 3, "num_rollouts": 1},
-    {"k": 3, "num_rollouts": 2},
-    {"k": 3, "num_rollouts": 3},
-]
+K = [1, 2, 3]
+NUM_ROLLOUTS = [1, 2, 3]
+PARAMS = [(k, nr) for k in K for nr in NUM_ROLLOUTS]
 
 
 if __name__ == "__main__":
