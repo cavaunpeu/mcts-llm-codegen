@@ -46,13 +46,11 @@ class MCTS:
     def __init__(
         self,
         test_problem_index: int,
-        num_rollouts: int,
         debug: bool,
         dry: bool,
     ):
         self.problem = Problem(TEST_PROBLEMS_DIR, test_problem_index)
         self.policy = Policy()
-        self.num_rollouts = num_rollouts
         self.debug = debug
         self.dry = dry
 
@@ -63,7 +61,7 @@ class MCTS:
             self.tokenizer = self.ctx.tokenizer
 
     @modal.method()
-    def run(self, k: int):
+    def run(self, k: int, num_rollouts: int):
         """
         Run MCTS on the given problem.
 
@@ -91,7 +89,7 @@ class MCTS:
         while True:
             start = time()
             # Perform rollouts
-            for i in range(1, self.num_rollouts + 1):
+            for i in range(1, num_rollouts + 1):
                 # Start at root
                 node = root
                 # Selection (select a leaf node)
@@ -163,14 +161,13 @@ if __name__ == "__main__":
         choices=os.listdir(TEST_PROBLEMS_DIR),
     )  # noqa: E501
     args = parser.parse_args()
-    params = {"k": args.K}
+    params = {"k": args.K, "num_rollouts": args.num_rollouts}
     with stub.run():
         print(f"Running MCTS on test problem {args.test_problem_index}...")
         mcts = MCTS(
             args.test_problem_index,
-            args.num_rollouts,
             args.debug,
-            args.dry,  # noqa: E501
+            args.dry,
         )
         code, reward = (
             mcts.run.remote(**params)
