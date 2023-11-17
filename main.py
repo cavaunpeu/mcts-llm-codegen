@@ -49,20 +49,25 @@ class MCTS:
         test_problem_index: int,
         num_rollouts: int,
         debug: bool,
+        dry: bool,
     ):
         self.problem = Problem(TEST_PROBLEMS_DIR, test_problem_index)
         self.policy = Policy()
         self.k = k
         self.num_rollouts = num_rollouts
         self.debug = debug
+        self.dry = dry
 
     def __enter__(self):
-        self.ctx = ModelContext(self.k)
-        self.ctx.initialize()
-        self.tokenizer = self.ctx.tokenizer
+        if not self.dry:
+            self.ctx = ModelContext(self.k)
+            self.ctx.initialize()
+            self.tokenizer = self.ctx.tokenizer
 
     @modal.method()
     def run(self):
+        if self.dry:
+            return ("dummy code", 1)
         state = self.tokenizer.encode(self.problem.prompt)
         node = root = Node(
             state=state,
@@ -84,8 +89,6 @@ class MCTS:
                 # Selection (select a leaf node)
                 while True:
                     if node.is_leaf_node:
-                        if self.debug:
-                            log_info(num_actions, node, i, None, None)
                         break
                     node = max(node.children, key=self.policy)
                 if not node.state[-1] == self.ctx.terminal_token_id:
@@ -110,13 +113,14 @@ class MCTS:
             node = root = max(root.children, key=lambda node: node.value)
             # Log action
             elapsed = time() - start
-            log_info(
-                num_actions,
-                node,
-                None,
-                self.tokenizer.decode(node.action),
-                elapsed,
-            )
+            if self.debug:
+                log_info(
+                    num_actions,
+                    node,
+                    None,
+                    self.tokenizer.decode(node.action),
+                    elapsed,
+                )
             result.append(node.action)
             num_actions += 1
             total_elapsed += elapsed
@@ -125,10 +129,12 @@ class MCTS:
                 break
         code = extract_code(self.tokenizer.decode(result))
         reward = compute_reward(code, self.problem)
-        print(f"\n>>> Result:\n\n{code}")
-        print(
-            f"\n>>> Reward: {reward} | Elapsed: {total_elapsed:.3f}s | Generations: {self.ctx.generations}"  # noqa: E501
-        )
+        if self.debug:
+            print(f"\n>>> Result:\n\n{code}")
+            print(
+                f"\n>>> Reward: {reward} | Elapsed: {total_elapsed:.3f}s | Generations: {self.ctx.generations}"  # noqa: E501
+            )
+        return (code, reward)
 
 
 if __name__ == "__main__":
@@ -137,6 +143,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--debug", action="store_true", help="Debug mode", default=False
     )
+    parser.add_argument("--dry", action="store_true", default=False)
     parser.add_argument(
         "--K", type=int, help="Number of expanded children", default=K
     )  # noqa: E501
@@ -155,5 +162,8 @@ if __name__ == "__main__":
             args.test_problem_index,
             args.num_rollouts,
             args.debug,
+            args.dry,  # noqa: E501
         )
-        mcts.run.remote() if args.remote else mcts.run.local()
+        code, reward = mcts.run.remote() if args.remote else mcts.run.local()
+        print(f"code: {code}")
+        print(f"reward: {reward}")
