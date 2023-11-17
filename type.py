@@ -92,7 +92,6 @@ class OutputTrie:
 class ModelContext:
     def __init__(
         self,
-        k: int,
         model_path: str = MODEL_PATH,
         model_name: str = MODEL_NAME,
         terminal_token: str = TERMINAL_TOKEN,
@@ -100,7 +99,6 @@ class ModelContext:
         no_cuda: bool = NO_CUDA,
         num_beams: int = NUM_BEAMS,
     ):
-        self.k = k
         self.model_path = model_path
         self.model_name = model_name
         self.terminal_token = terminal_token
@@ -180,12 +178,14 @@ class Node:
         prob: Optional[float],
         parent: Optional["Node"],
         model_context: ModelContext,  # type: ignore
+        k: int,
     ) -> None:
         self.state = state
         self.action = action
         self.prob = prob
         self.parent = parent
         self.ctx = model_context
+        self.k = k
         self.visits = 1
         self.observed_rewards = []
         self._children = []
@@ -220,7 +220,7 @@ class Node:
     def _generate_children(self):
         output = self.ctx.generate(self.state, next_token_only=True)
         (scores,) = output["scores"]
-        top_k_scores, top_k_ids = torch.topk(scores, K)
+        top_k_scores, top_k_ids = torch.topk(scores, self.k)
         top_k_scores = torch.softmax(top_k_scores, dim=-1)
         children = []
         for id, score in zip(top_k_ids, top_k_scores):
@@ -234,6 +234,7 @@ class Node:
                     prob=prob,
                     parent=self,
                     model_context=self.ctx,
+                    k=self.k,
                 )
             )
         return children

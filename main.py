@@ -45,7 +45,6 @@ stub = modal.Stub(
 class MCTS:
     def __init__(
         self,
-        k: int,
         test_problem_index: int,
         num_rollouts: int,
         debug: bool,
@@ -53,19 +52,27 @@ class MCTS:
     ):
         self.problem = Problem(TEST_PROBLEMS_DIR, test_problem_index)
         self.policy = Policy()
-        self.k = k
         self.num_rollouts = num_rollouts
         self.debug = debug
         self.dry = dry
 
     def __enter__(self):
         if not self.dry:
-            self.ctx = ModelContext(self.k)
+            self.ctx = ModelContext()
             self.ctx.initialize()
             self.tokenizer = self.ctx.tokenizer
 
     @modal.method()
-    def run(self):
+    def run(self, k: int):
+        """
+        Run MCTS on the given problem.
+
+        Args:
+            k: Number of expanded children.
+
+        Returns:
+            (code, reward): Generated code and reward.
+        """
         if self.dry:
             return ("dummy code", 1)
         state = self.tokenizer.encode(self.problem.prompt)
@@ -75,6 +82,7 @@ class MCTS:
             prob=None,
             parent=None,
             model_context=self.ctx,
+            k=k,
         )
         num_actions = 0
         total_elapsed = 0
@@ -155,15 +163,19 @@ if __name__ == "__main__":
         choices=os.listdir(TEST_PROBLEMS_DIR),
     )  # noqa: E501
     args = parser.parse_args()
+    params = {"k": args.K}
     with stub.run():
         print(f"Running MCTS on test problem {args.test_problem_index}...")
         mcts = MCTS(
-            args.K,
             args.test_problem_index,
             args.num_rollouts,
             args.debug,
             args.dry,  # noqa: E501
         )
-        code, reward = mcts.run.remote() if args.remote else mcts.run.local()
+        code, reward = (
+            mcts.run.remote(**params)
+            if args.remote
+            else mcts.run.local(**params)  # noqa: E501
+        )
         print(f"code: {code}")
         print(f"reward: {reward}")
