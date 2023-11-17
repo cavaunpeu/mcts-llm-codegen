@@ -1,3 +1,5 @@
+import argparse
+import os
 import re
 import sys
 from typing import Optional
@@ -5,7 +7,13 @@ from typing import Optional
 import numpy as np
 
 from type import Node, Problem
-from const import TERMINAL_TOKEN
+from const import (
+    K,
+    NUM_ROLLOUTS,
+    TERMINAL_TOKEN,
+    TEST_PROBLEM_INDEX,
+    TEST_PROBLEMS_DIR,
+)  # noqa: E501
 
 sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore
@@ -38,3 +46,23 @@ def log_info(
         f"Token: {repr(token) if token is not None else 'N/A':<8} |",
         f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
     )
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--remote", action="store_true", default=False)
+    parser.add_argument(
+        "--debug", action="store_true", help="Debug mode", default=False
+    )
+    parser.add_argument("--dry", action="store_true", default=False)
+    parser.add_argument(
+        "--K", type=int, help="Number of expanded children", default=K
+    )  # noqa: E501
+    parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
+    parser.add_argument(
+        "--test_problem_index",
+        type=str,
+        default=TEST_PROBLEM_INDEX,
+        choices=os.listdir(TEST_PROBLEMS_DIR),
+    )  # noqa: E501
+    return parser.parse_args()

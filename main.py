@@ -1,12 +1,11 @@
-import argparse
 import os
 from time import time
 
 import modal
 
-from const import NUM_ROLLOUTS, TEST_PROBLEM_INDEX, TEST_PROBLEMS_DIR, K
+from const import TEST_PROBLEMS_DIR
 from type import ModelContext, Node, Policy, Problem
-from util import compute_reward, extract_code, log_info
+from util import compute_reward, extract_code, log_info, parse_args
 
 
 # Suppress noisy warnings from reward evaluation code
@@ -144,23 +143,7 @@ class MCTS:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--remote", action="store_true", default=False)
-    parser.add_argument(
-        "--debug", action="store_true", help="Debug mode", default=False
-    )
-    parser.add_argument("--dry", action="store_true", default=False)
-    parser.add_argument(
-        "--K", type=int, help="Number of expanded children", default=K
-    )  # noqa: E501
-    parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
-    parser.add_argument(
-        "--test_problem_index",
-        type=str,
-        default=TEST_PROBLEM_INDEX,
-        choices=os.listdir(TEST_PROBLEMS_DIR),
-    )  # noqa: E501
-    args = parser.parse_args()
+    args = parse_args()
     params = {"k": args.K, "num_rollouts": args.num_rollouts}
     with stub.run():
         print(f"Running MCTS on test problem {args.test_problem_index}...")
