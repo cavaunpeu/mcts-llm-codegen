@@ -69,8 +69,15 @@ class MCTS:
         Returns:
             (code, reward): Generated code and reward.
         """
+        start_time = time()
         if self.dry:
-            return ("dummy code", 1)
+            return {
+                "code": "dummy code",
+                "reward": 1,
+                "start_time": start_time,
+                "elapsed_ms": num_rollouts / 100,
+                "generations": 0,
+            }
         state = self.tokenizer.encode(self.problem.prompt)
         node = root = Node(
             state=state,
@@ -133,9 +140,10 @@ class MCTS:
                 break
         code = extract_code(self.tokenizer.decode(result))
         reward = compute_reward(code, self.problem)
-        if self.debug:
-            print(f"\n>>> Result:\n\n{code}")
-            print(
-                f"\n>>> Reward: {reward} | Elapsed: {total_elapsed:.3f}s | Generations: {self.ctx.generations}"  # noqa: E501
-            )
-        return (code, reward)
+        return {
+            "code": code,
+            "reward": reward,
+            "start_time": start_time,
+            "elapsed_ms": total_elapsed,
+            "generations": self.ctx.generations,
+        }

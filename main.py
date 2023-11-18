@@ -12,10 +12,10 @@ if __name__ == "__main__":
             args.debug,
             args.dry,
         )
-        code, reward = (
+        output = (
             mcts.run.remote(**params)
             if args.remote
             else mcts.run.local(**params)  # noqa: E501
         )
-        print(f"code: {code}")
-        print(f"reward: {reward}")
+        for key, val in output.items():
+            print(f"{key}: {val}")
