@@ -8,7 +8,9 @@ import numpy as np
 
 from type import Node, Problem
 from const import (
+    CONCURRENCY_LIMIT,
     K,
+    NO_CUDA,
     NUM_ROLLOUTS,
     TERMINAL_TOKEN,
     TEST_PROBLEM_INDEX,
@@ -55,14 +57,19 @@ def parse_args():
         "--debug", action="store_true", help="Debug mode", default=False
     )
     parser.add_argument("--dry", action="store_true", default=False)
+    parser.add_argument("--no_cuda", action="store_true", default=NO_CUDA)
     parser.add_argument(
         "--K", type=int, help="Number of expanded children", default=K
     )  # noqa: E501
     parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
+    parser.add_argument(
+        "--concurrency_limit", type=int, default=CONCURRENCY_LIMIT
+    )  # noqa: E501
     parser.add_argument(
         "--test_problem_index",
         type=str,
         default=TEST_PROBLEM_INDEX,
         choices=os.listdir(TEST_PROBLEMS_DIR),
     )  # noqa: E501
-    return parser.parse_args()
+    args, _ = parser.parse_known_args()
+    return args
