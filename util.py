@@ -37,14 +37,12 @@ def compute_reward(code: str, problem: Problem) -> int:
 def log_info(
     num_actions: int,
     node: Node,
-    rollout_index: Optional[int],
     token: Optional[str],
     elapsed: Optional[float],
 ):
     print(
         f"Step: {('Prediction' if elapsed is not None else 'Selection'):<10} |",  # noqa: E501
         f"Action #: {num_actions:<2} |",
-        f"Rollout #: {rollout_index if rollout_index is not None else 'N/A':<4} |",  # noqa: E501
         f"Action: {node.display_action if node else 'N/A':<6} |",
         f"Token: {repr(token) if token is not None else 'N/A':<8} |",
         f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
@@ -82,7 +80,7 @@ def traverse_and_visualize(node, graph, tokenizer, node_id=0):
 
     # Create a label for the node with its statistics
     action = tokenizer.decode([node.action]) if node.action != "root" else "root"
-    label = f"Action: {action}\nVisits: {node.visits}\nSelected: {node.selected}"  # noqa: E501
+    label = f"Action ID: {node.action}\n Action: {action}\nVisits: {node.visits}\nSelected: {node.selected}"  # noqa: E501
     if node.action != "root":
         label += f"\nProb: {node.prob:.2f}\nValue: {node.value:.2f}"
     graph.node(str(node_id), label)
