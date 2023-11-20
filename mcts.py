@@ -100,10 +100,10 @@ class MCTS:
         total_elapsed = 0
         rewards_cache = {}
         result = list(state)
-        while True:
+        while len(result) < self.ctx.max_gen_horizon:
             start = time()
             # Perform rollouts
-            for i in range(1, num_rollouts + 1):
+            for _ in range(1, num_rollouts + 1):
                 # Start at root
                 node = root
                 # Selection (select a leaf node)
@@ -120,10 +120,11 @@ class MCTS:
                     text = self.tokenizer.decode(output["sequence"])
                     code = extract_code(text)
                     # Compute reward
-                    key = (code, self.problem)
-                    if key not in rewards_cache:
-                        rewards_cache[key] = compute_reward(code, self.problem)
-                    reward = rewards_cache[key]
+                    if code not in rewards_cache:
+                        rewards_cache[code] = compute_reward(
+                            code, self.problem
+                        )  # noqa: E501
+                    reward = rewards_cache[code]
                     # Backpropagation (update node statistics)
                     while node:
                         node.visits += 1
@@ -147,12 +148,13 @@ class MCTS:
             # Check if we're done
             if node.state[-1] == self.ctx.terminal_token_id:
                 break
-        code = extract_code(self.tokenizer.decode(result))
-        reward = compute_reward(code, self.problem)
+        code = max(rewards_cache, key=rewards_cache.get)
+        reward = rewards_cache[code]
         return {
             "code": code,
             "reward": reward,
             "start_time": start_time,
             "elapsed_ms": total_elapsed,
             "generations": self.ctx.generations,
+            "num_programs_generated": len(rewards_cache),
         }
