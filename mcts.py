@@ -85,7 +85,6 @@ class MCTS:
                 "reward": 1,
                 "start_time": start_time,
                 "elapsed_ms": num_rollouts / 100,
-                "generations": 0,
             }
         state = self.tokenizer.encode(self.problem.prompt)
         node = root = Node(
@@ -155,6 +154,7 @@ class MCTS:
             "reward": reward,
             "start_time": start_time,
             "elapsed_ms": total_elapsed,
-            "generations": self.ctx.generations,
-            "num_programs_generated": len(rewards_cache),
+            "num_sequence_generations": self.ctx.num_sequence_gens,
+            "num_next_token_generations": self.ctx.num_next_token_gens,
+            "num_unique_program_generations": len(rewards_cache),
         }

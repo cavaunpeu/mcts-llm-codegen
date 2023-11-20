@@ -108,7 +108,8 @@ class ModelContext:
 
     def initialize(self):
         # Initialize
-        self.generations = 0
+        self.num_sequence_gens = 0
+        self.num_next_token_gens = 0
         # Load tokenizer
         tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_name)
         (self.terminal_token_id,) = tokenizer.encode(self.terminal_token)
@@ -147,8 +148,13 @@ class ModelContext:
             use_cache=True,
             do_sample=False,
             **kwargs,
-        )  # type: ignore
-        self.generations += 1
+        )
+        # Update counters
+        if next_token_only:
+            self.num_next_token_gens += 1
+        else:
+            self.num_sequence_gens += 1
+        # Extract output
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
         scores = [scores.squeeze(0).cpu() for scores in output.scores]
