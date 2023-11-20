@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -180,7 +180,7 @@ class Node:
     def __init__(
         self,
         state: List[int],
-        action: Optional[int],
+        action: Optional[Union[int, str]],
         prob: Optional[float],
         parent: Optional["Node"],
         model_context: ModelContext,  # type: ignore
@@ -192,7 +192,8 @@ class Node:
         self.parent = parent
         self.ctx = model_context
         self.k = k
-        self.visits = 1
+        self.visits = 0
+        self.selected = 0
         self.observed_rewards = []
         self._children = []
 
@@ -263,7 +264,7 @@ class Policy:
             + self.constant  # noqa: E501
         )
         return node.value + param * node.prob * np.sqrt(
-            np.log(node.parent.visits)
+            np.log(node.parent.visits) if node.parent.visits >= 1 else 0
         ) / (  # noqa: E501
             1 + len(node.observed_rewards)
         )

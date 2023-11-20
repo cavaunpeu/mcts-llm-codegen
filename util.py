@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from typing import Optional
+from graphviz import Digraph
 
 import numpy as np
 
@@ -73,3 +74,30 @@ def parse_args():
     )  # noqa: E501
     args, _ = parser.parse_known_args()
     return args
+
+
+def traverse_and_visualize(node, graph, tokenizer, node_id=0):
+    if node is None:
+        return node_id
+
+    # Create a label for the node with its statistics
+    action = tokenizer.decode([node.action]) if node.action != "root" else "root"
+    label = f"Action: {action}\nVisits: {node.visits}\nSelected: {node.selected}"  # noqa: E501
+    if node.action != "root":
+        label += f"\nProb: {node.prob:.2f}\nValue: {node.value:.2f}"
+    graph.node(str(node_id), label)
+
+    current_id = node_id
+    children = [c for c in node.children if c.selected > 0 or c.visits > 0]
+    for child in children:
+        next_id = node_id + 1
+        graph.edge(str(current_id), str(next_id))
+        node_id = traverse_and_visualize(child, graph, tokenizer, next_id)
+
+    return node_id
+
+
+def visualize_tree(root, tokenizer):
+    graph = Digraph(comment="Tree Visualization")
+    traverse_and_visualize(root, graph, tokenizer)
+    graph.render("tree", format="png")

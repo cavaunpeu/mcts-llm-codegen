@@ -1,11 +1,12 @@
 import os
 from time import time
+from typing import Dict
 
 import modal
 
 from const import TEST_PROBLEMS_DIR
 from type import ModelContext, Node, Policy, Problem
-from util import compute_reward, extract_code, log_info, parse_args
+from util import compute_reward, extract_code, log_info, parse_args, visualize_tree
 
 # Suppress noisy warnings from reward evaluation code
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -87,9 +88,9 @@ class MCTS:
                 "elapsed_ms": num_rollouts / 100,
             }
         state = self.tokenizer.encode(self.problem.prompt)
-        node = root = Node(
+        node = root = absolute_root = Node(
             state=state,
-            action=None,
+            action="root",
             prob=None,
             parent=None,
             model_context=self.ctx,
@@ -108,6 +109,7 @@ class MCTS:
                 # Selection (select a leaf node)
                 while True:
                     if node.is_leaf_node:
+                        node.selected += 1
                         break
                     node = max(node.children, key=self.policy)
                 if not node.state[-1] == self.ctx.terminal_token_id:
@@ -149,6 +151,8 @@ class MCTS:
                 break
         code = max(rewards_cache, key=rewards_cache.get)
         reward = rewards_cache[code]
+        if self.debug:
+            visualize_tree(absolute_root, self.ctx.tokenizer)
         return {
             "code": code,
             "reward": reward,
