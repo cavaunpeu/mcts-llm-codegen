@@ -18,7 +18,6 @@ from const import (
     TERMINAL_TOKEN,
     UCB_BASE,
     UCB_CONSTANT,
-    K,
 )
 
 
@@ -97,7 +96,7 @@ class OutputTrie:
 class ModelContext:
     def __init__(
         self,
-        model_path: str = MODEL_PATH,
+        model_path: str,
         model_name: str = MODEL_NAME,
         terminal_token: str = TERMINAL_TOKEN,
         max_gen_horizon: int = MAX_GEN_HORIZON,

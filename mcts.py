@@ -2,6 +2,7 @@ import os
 from time import time
 
 import modal
+from const import MODEL_PATH
 
 from type import ModelContext, Node, Policy, APPSProblem
 from util import compute_reward, extract_code, log_info, parse_args, visualize_tree
@@ -49,16 +50,23 @@ stub = modal.Stub(
     timeout=60 * 60,
 )
 class MCTS:
-    def __init__(self, problem_index: int, debug: bool, dry: bool):
+    def __init__(
+        self,
+        problem_index: int,
+        debug: bool,
+        dry: bool,
+        model_path: str = MODEL_PATH,  # noqa: E501
+    ):
         self.problem = APPSProblem(problem_index)
         self.policy = Policy()
         self.debug = debug
         self.dry = dry
+        self.model_path = model_path
         self.problem_index = problem_index
 
     def __enter__(self):
         if not self.dry:
-            self.ctx = ModelContext()
+            self.ctx = ModelContext(self.model_path)
             self.ctx.initialize()
             self.tokenizer = self.ctx.tokenizer
 
