@@ -1,11 +1,9 @@
 import os
 from time import time
-from typing import Dict
 
 import modal
 
-from const import TEST_PROBLEMS_DIR
-from type import ModelContext, Node, Policy, Problem
+from type import ModelContext, Node, Policy, APPSProblem
 from util import compute_reward, extract_code, log_info, parse_args, visualize_tree
 
 # Suppress noisy warnings from reward evaluation code
@@ -23,7 +21,7 @@ stub = modal.Stub(
     .pip_install(
         "torch==2.0.1+cu118", index_url="https://download.pytorch.org/whl/cu118"
     )
-    .pip_install("transformers", "gdown", "pyext")
+    .pip_install("transformers", "gdown", "pyext", "graphviz")
     .run_commands(
         # Download 1.5B param model
         "gdown 1svUcwtqL6AD_Ti0eXJS03AaMdS7HDZ0d -O /root/",
@@ -44,23 +42,19 @@ stub = modal.Stub(
     container_idle_timeout=60 * 2,
     mounts=[
         modal.Mount.from_local_dir(
-            TEST_PROBLEMS_DIR, remote_path=f"/root/{TEST_PROBLEMS_DIR}"
-        )
+            APPSProblem.base_path, remote_path=f"/root/{APPSProblem.base_path}"
+        )  # noqa: E501
     ],
     concurrency_limit=args.concurrency_limit,
     timeout=60 * 60,
 )
 class MCTS:
-    def __init__(
-        self,
-        test_problem_index: int,
-        debug: bool,
-        dry: bool,
-    ):
-        self.problem = Problem(TEST_PROBLEMS_DIR, test_problem_index)
+    def __init__(self, problem_index: int, debug: bool, dry: bool):
+        self.problem = APPSProblem(problem_index)
         self.policy = Policy()
         self.debug = debug
         self.dry = dry
+        self.problem_index = problem_index
 
     def __enter__(self):
         if not self.dry:
@@ -153,8 +147,12 @@ class MCTS:
         if self.debug:
             visualize_tree(absolute_root, self.ctx.tokenizer)
         return {
+            "problem_index": self.problem_index,
             "code": code,
-            "reward": reward,
+            "train_reward": reward,
+            "train_reward_from_selected_nodes_program": compute_reward(
+                extract_code(self.tokenizer.decode(result)), self.problem
+            ),
             "start_time": start_time,
             "elapsed_ms": total_elapsed,
             "num_sequence_generations": self.ctx.num_sequence_gens,

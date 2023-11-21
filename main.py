@@ -6,9 +6,9 @@ if __name__ == "__main__":
     args = parse_args()
     params = {"k": args.K, "num_rollouts": args.num_rollouts}
     with stub.run():
-        print(f"Running MCTS on test problem {args.test_problem_index}...")
+        print(f"Running MCTS on problem {args.problem_index}...")
         mcts = MCTS(
-            args.test_problem_index,
+            args.problem_index,
             args.debug,
             args.dry,
         )

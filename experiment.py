@@ -1,12 +1,13 @@
 import itertools
 from pprint import pprint
 from mcts import stub, MCTS
-from util import parse_args
+from type import Problem
+from util import compute_reward, parse_args
 
 
 PARAM_RANGES = {
-    "K": [1, 2],
-    "num_rollouts": [1, 2],
+    "K": [3],
+    "num_rollouts": range(1, 4),
 }
 PARAMS = list(itertools.product(*PARAM_RANGES.values()))
 
@@ -14,15 +15,23 @@ PARAMS = list(itertools.product(*PARAM_RANGES.values()))
 if __name__ == "__main__":
     args = parse_args()
     with stub.run():
-        print(f"Running MCTS on test problem {args.test_problem_index}...")
+        print(f"Running MCTS on problem {args.problem_index}...")
         mcts = MCTS(
-            args.test_problem_index,
+            args.problem_index,
             args.debug,
             args.dry,
         )
         output = mcts.run.starmap(PARAMS)
         results = [
-            {**res, "params": dict(zip(PARAM_RANGES.keys(), vals))}
+            {
+                **res,
+                "params": dict(zip(PARAM_RANGES.keys(), vals)),
+                "test_reward": compute_reward(
+                    res["code"], APPSProblem(res["problem_index"]), mode="test"
+                )
+                if not args.dry
+                else None,
+            }
             for res, vals in zip(output, PARAMS)
         ]
         pprint(results)

@@ -1,5 +1,4 @@
 import argparse
-import os
 import re
 import sys
 from typing import Optional
@@ -7,15 +6,14 @@ from graphviz import Digraph
 
 import numpy as np
 
-from type import Node, Problem
+from type import APPSProblem, Node
 from const import (
     CONCURRENCY_LIMIT,
     K,
     NO_CUDA,
     NUM_ROLLOUTS,
     TERMINAL_TOKEN,
-    TEST_PROBLEM_INDEX,
-    TEST_PROBLEMS_DIR,
+    PROBLEM_INDEX,
 )  # noqa: E501
 
 sys.path.append("Code-AI-Tree-Search/eval")
@@ -28,9 +26,9 @@ def extract_code(text: str, terminal_token: str = TERMINAL_TOKEN) -> str:
     return match.group(1).strip() if match else ""
 
 
-def compute_reward(code: str, problem: Problem) -> int:
+def compute_reward(code: str, problem: APPSProblem, mode: str = "train") -> int:
     return _compute_reward(
-        problem.dir, code + "\n", mode="train", public_test_cases="half"
+        problem.dir, code + "\n", mode=mode, public_test_cases="half"
     )
 
 
@@ -65,10 +63,10 @@ def parse_args():
         "--concurrency_limit", type=int, default=CONCURRENCY_LIMIT
     )  # noqa: E501
     parser.add_argument(
-        "--test_problem_index",
+        "--problem_index",
         type=str,
-        default=TEST_PROBLEM_INDEX,
-        choices=os.listdir(TEST_PROBLEMS_DIR),
+        default=PROBLEM_INDEX,
+        choices=APPSProblem.problem_indices,
     )  # noqa: E501
     args, _ = parser.parse_known_args()
     return args

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+import os
 from typing import List, Optional, Union
 
 import numpy as np
@@ -7,6 +8,7 @@ import torch
 import transformers
 
 from const import (
+    APPS_PROBLEMS_DIR,
     MAX_GEN_HORIZON,
     MODEL_NAME,
     MODEL_PATH,
@@ -20,9 +22,12 @@ from const import (
 )
 
 
-class Problem:
-    def __init__(self, base_path: str, idx: int):
-        self.dir = f"{base_path}/{idx}"
+class APPSProblem:
+    base_path = APPS_PROBLEMS_DIR
+    problem_indices = os.listdir(base_path)
+
+    def __init__(self, idx: int):
+        self.dir = f"{self.base_path}/{idx}"
         self.input_output_path = f"{self.dir}/input_output.json"
         self.question_path = f"{self.dir}/question.txt"
         self.solutions_path = f"{self.dir}/solutions.json"
