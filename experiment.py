@@ -3,15 +3,10 @@ import itertools
 
 import wandb
 
-from const import MODEL_PATH
+from config import experiments
 from mcts import stub, MCTS
 from type import APPSProblem
 from util import compute_reward, parse_args
-
-
-PARAM_RANGES = {"K": [3], "num_rollouts": [2, 4, 6, 8]}
-MODELS_PATHS = [MODEL_PATH]
-PARAM_VALS = list(itertools.product(*PARAM_RANGES.values()))
 
 
 def compute_test_reward(code, problem_index):
@@ -22,16 +17,20 @@ def compute_test_reward(code, problem_index):
     )
 
 
-async def run(args, configs=PARAM_VALS):
+async def run(args):
+    # Initialize
+    exp = experiments[args.experiment_name]
+    configs = list(itertools.product(*exp["param_ranges"].values()))
+    model_paths = exp["model_paths"]
+    # Run MCTS
     futures, results = [], []
     for idx in APPSProblem.problem_indices:
-        for model_path in MODELS_PATHS:
+        for model_path in model_paths:
             mcts = MCTS(
                 args.debug,
                 args.dry,
                 model_path=model_path,
             )
-            # Run MCTS
             if args.remote:
                 f = mcts.run.remote.aio
                 futures += [f(*(cfg + (idx,))) for cfg in configs]
