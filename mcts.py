@@ -14,9 +14,7 @@ args = parse_args()
 
 
 @stub.cls(
-    gpu="any"
-    if args.remote and (not args.no_cuda) and (not args.dry)
-    else None,  # noqa: E501,
+    gpu="any" if args.remote and (not args.no_cuda) and (not args.dry) else None,
     cloud="aws",
     secret=modal.Secret.from_dict(
         {"TOKENIZERS_PARALLELISM": os.environ["TOKENIZERS_PARALLELISM"]}
@@ -25,7 +23,7 @@ args = parse_args()
     mounts=[
         modal.Mount.from_local_dir(
             APPSProblem.base_path, remote_path=f"/root/{APPSProblem.base_path}"
-        )  # noqa: E501
+        )
     ],
     concurrency_limit=args.concurrency_limit,
     timeout=60 * 60,
@@ -35,7 +33,7 @@ class MCTS:
         self,
         debug: bool,
         dry: bool,
-        model_path: str = MODEL_PATH,  # noqa: E501
+        model_path: str = MODEL_PATH,
     ):
         self.debug = debug
         self.dry = dry
@@ -74,6 +72,16 @@ class MCTS:
         # Run MCTS
         problem = APPSProblem(problem_index)
         state = self.tokenizer.encode(problem.prompt)
+        stats = {
+            "num_sequence_gens": 0,
+            "num_next_token_gens": 0,
+            "generation_times": [],
+        }
+        num_actions = 0
+        total_elapsed = 0
+        rewards_cache = {}
+        result = list(state)
+        # Define root node
         node = root = absolute_root = Node(
             state=state,
             action="root",
@@ -81,11 +89,8 @@ class MCTS:
             parent=None,
             model_context=self.ctx,
             k=k,
+            stats=stats,
         )
-        num_actions = 0
-        total_elapsed = 0
-        rewards_cache = {}
-        result = list(state)
         while len(result) < self.ctx.max_gen_horizon:
             start = time()
             # Perform rollouts
@@ -100,15 +105,15 @@ class MCTS:
                     node = max(node.children, key=self.policy)
                 # Expansion (expand children, select one to rollout)
                 if node.action != self.ctx.terminal_token_id:
-                    # NB: If scores are the same, first child will always be selected.  # noqa: E501
+                    # NB: If scores are the same, first child will always be selected.
                     node = max(node.children, key=self.policy)
                 # Simulate (simulate rollout)
-                output = self.ctx.generate(node.state)  # noqa: E501
+                output = self.ctx.generate(node.state, stats)
                 text = self.tokenizer.decode(output["sequence"])
                 code = extract_code(text)
                 # Compute reward
                 if code not in rewards_cache:
-                    rewards_cache[code] = compute_reward(code, problem)  # noqa: E501
+                    rewards_cache[code] = compute_reward(code, problem)
                 reward = rewards_cache[code]
                 # Backpropagation (update node statistics)
                 while node:
@@ -132,10 +137,10 @@ class MCTS:
             # Check if we're done
             if node.action == self.ctx.terminal_token_id:
                 break
-        code = max(rewards_cache, key=rewards_cache.get)
+        code = max(rewards_cache, key=rewards_cache.get)  # type: ignore
         reward = rewards_cache[code]
-        # if self.debug:
-        #     visualize_tree(absolute_root, self.ctx.tokenizer)
+        if self.debug:
+            visualize_tree(absolute_root, self.ctx.tokenizer)
         return {
             "config": config,
             "result": {
@@ -146,8 +151,9 @@ class MCTS:
                 ),
                 "start_time": start_time,
                 "elapsed_ms": total_elapsed,
-                "num_sequence_generations": self.ctx.num_sequence_gens,
-                "num_next_token_generations": self.ctx.num_next_token_gens,
+                "generation_elapsed_ms": sum(stats["generation_times"]),
+                "num_sequence_generations": stats["num_sequence_gens"],
+                "num_next_token_generations": stats["num_next_token_gens"],
                 "num_unique_program_generations": len(rewards_cache),
             },
         }

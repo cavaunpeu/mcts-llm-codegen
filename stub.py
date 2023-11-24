@@ -16,10 +16,14 @@ stub = modal.Stub(
     )
     .pip_install("transformers", "gdown", "pyext", "graphviz")
     .run_commands(
-        # Download 1.5B and 2.7B param model
-        "gdown 16kXGKJaFS3MmW-kQMyUbinF828o4tBSY -O /root/",
+        # Download 1.5B model
+        "gdown 1svUcwtqL6AD_Ti0eXJS03AaMdS7HDZ0d -O /root/",
         # Extract models
         "mkdir -p /root/models",
-        "tar -xvf /root/models.tar -C /root/models",
-    ),
+        "tar -xvf /root/models_1.5B.tar -C /root/models",
+    )
+    .run_commands(
+        "apt-get update",
+        "apt-get install -y graphviz",
+    )
 )

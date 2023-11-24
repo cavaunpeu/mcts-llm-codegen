@@ -14,7 +14,7 @@ from const import (
     NUM_ROLLOUTS,
     TERMINAL_TOKEN,
     PROBLEM_INDEX,
-)  # noqa: E501
+)
 
 sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore
@@ -39,11 +39,11 @@ def log_info(
     elapsed: Optional[float],
 ):
     print(
-        f"Step: {('Prediction' if elapsed is not None else 'Selection'):<10} |",  # noqa: E501
+        f"Step: {('Prediction' if elapsed is not None else 'Selection'):<10} |",
         f"Action #: {num_actions:<2} |",
         f"Action: {node.display_action if node else 'N/A':<6} |",
         f"Token: {repr(token) if token is not None else 'N/A':<8} |",
-        f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",  # noqa: E501
+        f"Elapsed: {(str(np.round(elapsed, 3)) + 's' if elapsed is not None else 'N/A'):<7} |",
     )
 
 
@@ -55,20 +55,16 @@ def parse_args():
     )
     parser.add_argument("--dry", action="store_true", default=False)
     parser.add_argument("--no_cuda", action="store_true", default=NO_CUDA)
-    parser.add_argument(
-        "--K", type=int, help="Number of expanded children", default=K
-    )  # noqa: E501
+    parser.add_argument("--K", type=int, help="Number of expanded children", default=K)
     parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
-    parser.add_argument(
-        "--concurrency_limit", type=int, default=CONCURRENCY_LIMIT
-    )  # noqa: E501
+    parser.add_argument("--concurrency_limit", type=int, default=CONCURRENCY_LIMIT)
     parser.add_argument("--experiment_name", type=str)
     parser.add_argument(
         "--problem_index",
         type=str,
         default=PROBLEM_INDEX,
         choices=APPSProblem.problem_indices,
-    )  # noqa: E501
+    )
     args, _ = parser.parse_known_args()
     return args
 
@@ -79,7 +75,7 @@ def traverse_and_visualize(node, graph, tokenizer, node_id=0):
 
     # Create a label for the node with its statistics
     action = tokenizer.decode([node.action]) if node.action != "root" else "root"
-    label = f"Action ID: {node.action}\n Action: {action}\nVisits: {node.visits}\nSelected: {node.selected}"  # noqa: E501
+    label = f"Action ID: {node.action}\n Action: {action}\nVisits: {node.visits}\nSelected: {node.selected}"
     if node.action != "root":
         label += f"\nProb: {node.prob:.2f}\nValue: {node.value:.2f}"
     graph.node(str(node_id), label)

@@ -44,7 +44,7 @@ async def run(args, configs=PARAM_VALS):
     for payload in iterable:
         payload = await payload if args.remote else payload
         if not args.dry:
-            result, config = payload["result"], payload["config"]  # type: ignore  # noqa: E501
+            result, config = payload["result"], payload["config"]  # type: ignore
             code, problem_index = result["code"], config["problem_index"]
             test_reward = compute_test_reward(code, problem_index)
             # Save to wandb
