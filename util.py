@@ -62,6 +62,7 @@ def parse_args():
     parser.add_argument(
         "--concurrency_limit", type=int, default=CONCURRENCY_LIMIT
     )  # noqa: E501
+    parser.add_argument("--experiment_name", type=str)
     parser.add_argument(
         "--problem_index",
         type=str,

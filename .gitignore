@@ -1,3 +1,4 @@
 .python-version
 models
 __pycache__
+wandb

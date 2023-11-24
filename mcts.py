@@ -4,39 +4,20 @@ from time import time
 import modal
 from const import MODEL_PATH
 
+from stub import stub
 from type import ModelContext, Node, Policy, APPSProblem
 from util import compute_reward, extract_code, log_info, parse_args, visualize_tree
 
 # Suppress noisy warnings from reward evaluation code
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 args = parse_args()
-
-# Modal config
-stub = modal.Stub(
-    image=(
-        modal.Image.debian_slim()
-        if args.dry or args.no_cuda
-        else modal.Image.from_registry("nvcr.io/nvidia/pytorch:22.12-py3")
-    )
-    .pip_install(
-        "torch==2.0.1+cu118", index_url="https://download.pytorch.org/whl/cu118"
-    )
-    .pip_install("transformers", "gdown", "pyext", "graphviz")
-    .run_commands(
-        # Download 1.5B param model
-        "gdown 1svUcwtqL6AD_Ti0eXJS03AaMdS7HDZ0d -O /root/",
-        # Extract model
-        "mkdir -p /root/models",
-        "tar -xvf /root/models_1.5B.tar -C /root/models",
-    ),
-)
 
 
 @stub.cls(
     gpu="any"
     if args.remote and (not args.no_cuda) and (not args.dry)
     else None,  # noqa: E501,
+    cloud="aws",
     secret=modal.Secret.from_dict(
         {"TOKENIZERS_PARALLELISM": os.environ["TOKENIZERS_PARALLELISM"]}
     ),
@@ -52,26 +33,23 @@ stub = modal.Stub(
 class MCTS:
     def __init__(
         self,
-        problem_index: int,
         debug: bool,
         dry: bool,
         model_path: str = MODEL_PATH,  # noqa: E501
     ):
-        self.problem = APPSProblem(problem_index)
-        self.policy = Policy()
         self.debug = debug
         self.dry = dry
         self.model_path = model_path
-        self.problem_index = problem_index
 
     def __enter__(self):
         if not self.dry:
+            self.policy = Policy()
             self.ctx = ModelContext(self.model_path)
             self.ctx.initialize()
             self.tokenizer = self.ctx.tokenizer
 
     @modal.method()
-    def run(self, k: int, num_rollouts: int):
+    def run(self, k: int, num_rollouts: int, problem_index: str):
         """
         Run MCTS on the given problem.
 
@@ -81,15 +59,21 @@ class MCTS:
         Returns:
             (code, reward): Generated code and reward.
         """
+        # Initialize
+        config = {k: v for k, v in locals().copy().items() if k != "self"}
         start_time = time()
         if self.dry:
             return {
-                "code": "dummy code",
-                "reward": 1,
-                "start_time": start_time,
-                "elapsed_ms": num_rollouts / 100,
+                "config": config,
+                "result": {
+                    "code": "dummy code",
+                    "train_reward": 1,
+                    "start_time": start_time,
+                },
             }
-        state = self.tokenizer.encode(self.problem.prompt)
+        # Run MCTS
+        problem = APPSProblem(problem_index)
+        state = self.tokenizer.encode(problem.prompt)
         node = root = absolute_root = Node(
             state=state,
             action="root",
@@ -124,9 +108,7 @@ class MCTS:
                 code = extract_code(text)
                 # Compute reward
                 if code not in rewards_cache:
-                    rewards_cache[code] = compute_reward(
-                        code, self.problem
-                    )  # noqa: E501
+                    rewards_cache[code] = compute_reward(code, problem)  # noqa: E501
                 reward = rewards_cache[code]
                 # Backpropagation (update node statistics)
                 while node:
@@ -152,18 +134,20 @@ class MCTS:
                 break
         code = max(rewards_cache, key=rewards_cache.get)
         reward = rewards_cache[code]
-        if self.debug:
-            visualize_tree(absolute_root, self.ctx.tokenizer)
+        # if self.debug:
+        #     visualize_tree(absolute_root, self.ctx.tokenizer)
         return {
-            "problem_index": self.problem_index,
-            "code": code,
-            "train_reward": reward,
-            "train_reward_from_selected_nodes_program": compute_reward(
-                extract_code(self.tokenizer.decode(result)), self.problem
-            ),
-            "start_time": start_time,
-            "elapsed_ms": total_elapsed,
-            "num_sequence_generations": self.ctx.num_sequence_gens,
-            "num_next_token_generations": self.ctx.num_next_token_gens,
-            "num_unique_program_generations": len(rewards_cache),
+            "config": config,
+            "result": {
+                "code": code,
+                "train_reward": reward,
+                "train_reward_from_selected_nodes_program": compute_reward(
+                    extract_code(self.tokenizer.decode(result)), problem
+                ),
+                "start_time": start_time,
+                "elapsed_ms": total_elapsed,
+                "num_sequence_generations": self.ctx.num_sequence_gens,
+                "num_next_token_generations": self.ctx.num_next_token_gens,
+                "num_unique_program_generations": len(rewards_cache),
+            },
         }
