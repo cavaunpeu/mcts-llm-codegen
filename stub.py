@@ -16,10 +16,10 @@ stub = modal.Stub(
     )
     .pip_install("transformers", "gdown", "pyext", "graphviz", "wandb")
     .run_commands(
-        # Download 1.5B model
-        "gdown 1svUcwtqL6AD_Ti0eXJS03AaMdS7HDZ0d -O /root/",
+        # Download 1.5B and 2.7B param models
+        "gdown 1iGuEI-Naymb7ARYaa7PkT77UH3bqaqZR -O /root/",
         # Extract models
         "mkdir -p /root/models",
-        "tar -xvf /root/models_1.5B.tar -C /root/models",
+        "tar -xvf /root/models.tar -C /root/models",
     )
 )

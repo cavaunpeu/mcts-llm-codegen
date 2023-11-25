@@ -25,7 +25,7 @@ async def run(args):
     results = []
     for cfg in configs:
         mcts = MCTS(
-            args.debug,
+            args.debug * args.concurrency_limit == 1,
             args.dry,
             model_path=cfg["model_path"],
         )
