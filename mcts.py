@@ -37,6 +37,7 @@ class MCTS:
     ):
         self.debug = debug
         self.dry = dry
+        self.visualize = not args.remote and not args.dry and debug
         self.model_path = model_path
 
     def __enter__(self):
@@ -139,7 +140,7 @@ class MCTS:
                 break
         code = max(rewards_cache, key=rewards_cache.get)  # type: ignore
         reward = rewards_cache[code]
-        if self.debug:
+        if self.visualize:
             visualize_tree(absolute_root, self.ctx.tokenizer)
         return {
             "config": config,
