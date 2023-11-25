@@ -2,7 +2,7 @@ import os
 from time import time
 
 import modal
-from const import MODEL_PATH
+from const import MODEL_BASE_PATH
 
 from stub import stub
 from type import ModelContext, Node, Policy, APPSProblem
@@ -34,7 +34,7 @@ class MCTS:
         debug: bool,
         dry: bool,
         visualize: bool = False,
-        model_path: str = MODEL_PATH,
+        model_path: str = f"{MODEL_BASE_PATH}/1.5B",
     ):
         self.debug = debug
         self.dry = dry

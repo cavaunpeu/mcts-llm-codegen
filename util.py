@@ -11,6 +11,7 @@ import wandb
 from type import APPSProblem, Node
 from const import (
     CONCURRENCY_LIMIT,
+    DEFAULT_WANDB_PROJECT_NAME,
     K,
     NO_CUDA,
     NUM_ROLLOUTS,
@@ -99,10 +100,14 @@ def visualize_tree(root, tokenizer):
     graph.render("tree", format="png")
 
 
+def get_wandb_runs(experiment_name, project_name=DEFAULT_WANDB_PROJECT_NAME):
+    return wandb.Api().runs(project_name, filters={"group": experiment_name})
+
+
 def compose_configs(
-    problem_indices, experiment_name, dry, project_name="mcts-llm-codegen"
+    problem_indices, experiment_name, dry, project_name=DEFAULT_WANDB_PROJECT_NAME
 ):
-    runs = wandb.Api().runs(project_name, filters={"group": experiment_name})
+    runs = get_wandb_runs(experiment_name, project_name)
     already_run = [run.config for run in runs]
     exp = experiments[experiment_name]
     configs = []

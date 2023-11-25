@@ -152,11 +152,11 @@ class ModelContext:
             **kwargs,
         )
         # Update stats
+        stats["generation_times"].append(time() - start)
         if next_token_only:
             stats["num_next_token_gens"] += 1
         else:
             stats["num_sequence_gens"] += 1
-        stats["generation_times"].append(time() - start)
         # Extract output
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()
