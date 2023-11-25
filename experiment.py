@@ -16,9 +16,11 @@ def compute_test_reward(code, problem_index):
 
 
 async def run(args):
-    # Initialize experiment
-    configs = compose_configs(args.experiment_name, args.dry)
-    print(f"Running {len(configs)} configs ...")
+    # Compose experiment configs
+    configs = compose_configs(
+        APPSProblem.problem_indices, args.experiment_name, args.dry
+    )
+    print(f"Running {len(configs)} remaining configs ...")
     # Run MCTS
     results = []
     for cfg in configs:

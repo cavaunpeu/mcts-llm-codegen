@@ -99,12 +99,14 @@ def visualize_tree(root, tokenizer):
     graph.render("tree", format="png")
 
 
-def compose_configs(experiment_name, dry, project_name="mcts-llm-codegen"):
+def compose_configs(
+    problem_indices, experiment_name, dry, project_name="mcts-llm-codegen"
+):
     runs = wandb.Api().runs(project_name, filters={"group": experiment_name})
     already_run = [run.config for run in runs]
     exp = experiments[experiment_name]
     configs = []
-    for idx in APPSProblem.problem_indices:
+    for idx in problem_indices:
         for cfg in list(itertools.product(*exp.values())):
             cfg = {
                 **dict(zip(exp.keys(), cfg)),
