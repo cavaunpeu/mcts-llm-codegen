@@ -5,6 +5,7 @@ from typing import Optional
 from graphviz import Digraph
 
 import numpy as np
+import wandb
 
 from type import APPSProblem, Node
 from const import (
@@ -94,3 +95,12 @@ def visualize_tree(root, tokenizer):
     graph = Digraph(comment="Tree Visualization")
     traverse_and_visualize(root, graph, tokenizer)
     graph.render("tree", format="png")
+
+
+def filter_experiment_configs(
+    configs, experiment_name, project_name="mcts-llm-codegen"
+):
+    wandb_api = wandb.Api()
+    runs = wandb_api.runs(project_name, filters={"group": experiment_name})
+    already_run = [run.config for run in runs]
+    return [cfg for cfg in configs if cfg not in already_run]

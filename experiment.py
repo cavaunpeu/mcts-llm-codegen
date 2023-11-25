@@ -6,7 +6,7 @@ import wandb
 from config import experiments
 from mcts import stub, MCTS
 from type import APPSProblem
-from util import compute_reward, parse_args
+from util import compute_reward, filter_experiment_configs, parse_args
 
 
 def compute_test_reward(code, problem_index):
@@ -18,28 +18,29 @@ def compute_test_reward(code, problem_index):
 
 
 async def run(args):
-    # Initialize
+    # Initialize experiment
     exp = experiments[args.experiment_name]
-    configs = list(itertools.product(*exp["param_ranges"].values()))
-    model_paths = exp["model_paths"]
+    configs = list(itertools.product(*exp.values()))
+    configs = [dict(zip(exp.keys(), cfg)) for cfg in configs]
+    # Get existing experiment results
+    configs = filter_experiment_configs(configs, args.experiment_name)
+    print(f"Running {len(configs)} configs ...")
     # Run MCTS
-    futures, results = [], []
+    func_name = "remote.aio" if args.remote else "local"
+    results = []
     for idx in APPSProblem.problem_indices:
-        for model_path in model_paths:
+        for cfg in configs:
             mcts = MCTS(
                 args.debug,
                 args.dry,
-                model_path=model_path,
+                model_path=cfg["model_path"],
             )
-            if args.remote:
-                f = mcts.run.remote.aio
-                futures += [f(*(cfg + (idx,))) for cfg in configs]
-            else:
-                f = mcts.run.local
-                results += [f(*(cfg + (idx,))) for cfg in configs]
+            f = getattr(mcts.run, func_name)
+            result = f(**{**cfg, "problem_index": idx})
+            results.append(result)
 
     # Collect results
-    iterable = asyncio.as_completed(futures) if args.remote else results
+    iterable = asyncio.as_completed(results) if args.remote else results
     for payload in iterable:
         payload = await payload if args.remote else payload
         if not args.dry:

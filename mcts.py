@@ -47,7 +47,7 @@ class MCTS:
             self.tokenizer = self.ctx.tokenizer
 
     @modal.method()
-    def run(self, k: int, num_rollouts: int, problem_index: str):
+    def run(self, k: int, num_rollouts: int, problem_index: str, **kwargs):
         """
         Run MCTS on the given problem.
 
