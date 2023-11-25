@@ -14,16 +14,12 @@ stub = modal.Stub(
     .pip_install(
         "torch==2.0.1+cu118", index_url="https://download.pytorch.org/whl/cu118"
     )
-    .pip_install("transformers", "gdown", "pyext", "graphviz")
+    .pip_install("transformers", "gdown", "pyext", "graphviz", "wandb")
     .run_commands(
         # Download 1.5B model
         "gdown 1svUcwtqL6AD_Ti0eXJS03AaMdS7HDZ0d -O /root/",
         # Extract models
         "mkdir -p /root/models",
         "tar -xvf /root/models_1.5B.tar -C /root/models",
-    )
-    .run_commands(
-        "apt-get update",
-        "apt-get install -y graphviz",
     )
 )

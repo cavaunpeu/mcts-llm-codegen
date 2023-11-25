@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import re
 import sys
 from typing import Optional
@@ -16,6 +17,7 @@ from const import (
     TERMINAL_TOKEN,
     PROBLEM_INDEX,
 )
+from config import experiments
 
 sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore
@@ -97,10 +99,17 @@ def visualize_tree(root, tokenizer):
     graph.render("tree", format="png")
 
 
-def filter_experiment_configs(
-    configs, experiment_name, project_name="mcts-llm-codegen"
-):
-    wandb_api = wandb.Api()
-    runs = wandb_api.runs(project_name, filters={"group": experiment_name})
+def compose_configs(experiment_name, dry, project_name="mcts-llm-codegen"):
+    runs = wandb.Api().runs(project_name, filters={"group": experiment_name})
     already_run = [run.config for run in runs]
-    return [cfg for cfg in configs if cfg not in already_run]
+    exp = experiments[experiment_name]
+    configs = []
+    for idx in APPSProblem.problem_indices:
+        for cfg in list(itertools.product(*exp.values())):
+            cfg = {
+                **dict(zip(exp.keys(), cfg)),
+                "problem_index": idx,
+            }
+            if cfg not in already_run or dry:
+                configs.append(cfg)
+    return configs

@@ -33,11 +33,12 @@ class MCTS:
         self,
         debug: bool,
         dry: bool,
+        visualize: bool = False,
         model_path: str = MODEL_PATH,
     ):
         self.debug = debug
         self.dry = dry
-        self.visualize = not args.remote and not args.dry and debug
+        self.visualize = visualize
         self.model_path = model_path
 
     def __enter__(self):
@@ -59,7 +60,9 @@ class MCTS:
             (code, reward): Generated code and reward.
         """
         # Initialize
-        config = {k: v for k, v in locals().copy().items() if k != "self"}
+        config = {k: v for k, v in locals().copy().items()}
+        config = {**config, **kwargs}
+        config = {k: v for k, v in config.items() if k not in ["self", "kwargs"]}
         start_time = time()
         if self.dry:
             return {
