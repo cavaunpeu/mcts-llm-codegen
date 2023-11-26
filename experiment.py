@@ -1,18 +1,7 @@
 import asyncio
-
-import wandb
-
 from mcts import stub, MCTS
 from type import APPSProblem
-from util import compose_configs, compute_reward, parse_args
-
-
-def compute_test_reward(code, problem_index):
-    return compute_reward(
-        code,
-        APPSProblem(problem_index),
-        mode="test",
-    )
+from util import compose_configs, parse_args
 
 
 async def run(args):
@@ -27,31 +16,20 @@ async def run(args):
         mcts = MCTS(
             args.debug * args.concurrency_limit == 1,
             args.dry,
+            args.experiment_name,
             model_path=cfg["model_path"],
         )
         f = mcts.run.remote.aio if args.remote else mcts.run.local
         results.append(f(**cfg))
 
     # Collect results
-    iterable = asyncio.as_completed(results) if args.remote else results
-    for payload in iterable:
-        payload = await payload if args.remote else payload
-        if not args.dry:
-            result, config = payload["result"], payload["config"]  # type: ignore
-            code, problem_index = result["code"], config["problem_index"]
-            test_reward = compute_test_reward(code, problem_index)
-            # Save to wandb
-            wandb.init(
-                group=args.experiment_name,
-                config=config,
-            )
-            wandb.log({**result, "test_reward": test_reward})
-            wandb.finish()
+    if args.remote:
+        await asyncio.gather(*results)
 
 
 if __name__ == "__main__":
     args = parse_args()
     if not args.dry and args.experiment_name is None:
         raise ValueError("Must specify experiment name")
-    with stub.run():
+    with stub.run(detach=args.remote):
         asyncio.run(run(args))

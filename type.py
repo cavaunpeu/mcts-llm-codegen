@@ -10,6 +10,7 @@ import transformers
 
 from const import (
     APPS_PROBLEMS_DIR,
+    DEFAULT_WANDB_PROJECT_NAME,
     MAX_GEN_HORIZON,
     MODEL_NAME,
     NO_CUDA,
@@ -127,6 +128,11 @@ class ModelContext:
             if torch.cuda.is_available() and not self.no_cuda
             else torch.device("cpu")
         )
+        self.device_name = (
+            torch.cuda.get_device_name(self.device)
+            if self.device.type == "cuda"
+            else "cpu"
+        )
         # Load model
         self.model = transformers.AutoModelForCausalLM.from_pretrained(
             self.model_path, pad_token_id=self.tokenizer.eos_token_id
@@ -152,11 +158,10 @@ class ModelContext:
             **kwargs,
         )
         # Update stats
-        stats["generation_times"].append(time() - start)
         if next_token_only:
-            stats["num_next_token_gens"] += 1
+            stats["next_token_gen_times"].append(time() - start)
         else:
-            stats["num_sequence_gens"] += 1
+            stats["seq_gen_times"].append(time() - start)
         # Extract output
         (sequence,) = output.sequences
         sequence = sequence.squeeze(0).tolist()

@@ -22,4 +22,5 @@ stub = modal.Stub(
         "mkdir -p /root/models",
         "tar -xvf /root/models.tar -C /root/models",
     )
+    .apt_install("git")
 )

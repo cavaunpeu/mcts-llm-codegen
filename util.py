@@ -62,7 +62,7 @@ def parse_args():
     parser.add_argument("--K", type=int, help="Number of expanded children", default=K)
     parser.add_argument("--num_rollouts", type=int, default=NUM_ROLLOUTS)
     parser.add_argument("--concurrency_limit", type=int, default=CONCURRENCY_LIMIT)
-    parser.add_argument("--experiment_name", type=str)
+    parser.add_argument("--experiment_name", type=str, default=None)
     parser.add_argument(
         "--problem_index",
         type=str,
