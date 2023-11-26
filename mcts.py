@@ -15,7 +15,7 @@ args = parse_args()
 
 
 @stub.cls(
-    gpu="any" if args.remote and (not args.no_cuda) and (not args.dry) else None,
+    gpu="t4" if args.remote and (not args.no_cuda) and (not args.dry) else None,
     cloud="aws",
     secrets=(
         modal.Secret.from_dict(
