@@ -30,7 +30,7 @@ args = parse_args()
         )
     ],
     concurrency_limit=args.concurrency_limit,
-    timeout=60 * 60,
+    timeout=60 * 180,
 )
 class MCTS:
     def __init__(
