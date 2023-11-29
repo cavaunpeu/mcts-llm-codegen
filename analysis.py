@@ -19,6 +19,9 @@ matplotlib.use("Agg")
 GROUP_COLS = ["k", "num_rollouts", "model_size"]
 GPU_TO_TFLOPS_PER_SECOND = {"Tesla T4": 8.141, "Tesla L4": 31.3}
 GPU_TO_PRICE_PER_SECOND = {"Tesla T4": 0.000164, "Tesla L4": 0.000291}
+MAX_TFLOPS_BUDGET = 3e3
+NUM_ROLLOUTS_RANGE = range(2, 6)
+MODEL_SIZES = np.linspace(1.5, 3.0, 16)
 
 # Retrieve and preprocess data
 runs = get_wandb_runs("mcts-v1")
@@ -296,9 +299,6 @@ def plot_rewards_heatmap(num_rollouts_range, model_sizes, max_tflops_budget):
     return reward_df, tflops_df
 
 
-MAX_TFLOPS_BUDGET = 3e3
-NUM_ROLLOUTS_RANGE = range(2, 6)
-MODEL_SIZES = np.linspace(1.5, 3.0, 16)
 reward_df, tflops_df = plot_rewards_heatmap(
     NUM_ROLLOUTS_RANGE, MODEL_SIZES, MAX_TFLOPS_BUDGET
 )
