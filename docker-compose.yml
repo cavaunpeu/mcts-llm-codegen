@@ -9,6 +9,7 @@ services:
     mem_limit: 10g
     volumes:
       - ~/.modal.toml:/root/.modal.toml:ro
+      - ~/.netrc:/root/.netrc:ro
 
   test:
     build:
