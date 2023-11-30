@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import transformers
 
-from const import (
+from app.const import (
     APPS_PROBLEMS_DIR,
     MAX_GEN_HORIZON,
     MODEL_NAME,

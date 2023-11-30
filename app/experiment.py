@@ -1,7 +1,7 @@
 import asyncio
-from mcts import stub, MCTS
-from type import APPSProblem
-from util import compose_configs, parse_args
+from app.mcts import stub, MCTS
+from app.type import APPSProblem
+from app.util import compose_configs, parse_args
 
 
 async def run(args):

@@ -1,5 +1,5 @@
-from mcts import stub, MCTS
-from util import parse_args
+from app.mcts import stub, MCTS
+from app.util import parse_args
 
 
 if __name__ == "__main__":

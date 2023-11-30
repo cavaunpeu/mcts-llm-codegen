@@ -1,4 +1,4 @@
-from const import MODEL_BASE_PATH
+from app.const import MODEL_BASE_PATH
 
 
 experiments = {

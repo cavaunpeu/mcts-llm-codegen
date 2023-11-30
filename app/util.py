@@ -8,8 +8,8 @@ from graphviz import Digraph
 import numpy as np
 import wandb
 
-from type import APPSProblem, Node
-from const import (
+from app.type import APPSProblem, Node
+from app.const import (
     CONCURRENCY_LIMIT,
     DEFAULT_WANDB_PROJECT_NAME,
     K,
@@ -18,7 +18,7 @@ from const import (
     TERMINAL_TOKEN,
     PROBLEM_INDEX,
 )
-from config import experiments
+from app.config import experiments
 
 sys.path.append("Code-AI-Tree-Search/eval")
 from compute_reward import compute_reward as _compute_reward  # type: ignore

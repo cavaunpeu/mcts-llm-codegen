@@ -1,5 +1,5 @@
 import modal
-from util import parse_args
+from app.util import parse_args
 
 
 args = parse_args()

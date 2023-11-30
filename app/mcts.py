@@ -3,11 +3,11 @@ from time import time
 
 import modal
 import wandb
-from const import DEFAULT_WANDB_PROJECT_NAME, MODEL_BASE_PATH
+from app.const import DEFAULT_WANDB_PROJECT_NAME, MODEL_BASE_PATH
 
-from stub import stub
-from type import ModelContext, Node, Policy, APPSProblem
-from util import compute_reward, extract_code, log_info, parse_args, visualize_tree
+from app.stub import stub
+from app.type import ModelContext, Node, Policy, APPSProblem
+from app.util import compute_reward, extract_code, log_info, parse_args, visualize_tree
 
 # Suppress noisy warnings from reward evaluation code
 os.environ["TOKENIZERS_PARALLELISM"] = "false"

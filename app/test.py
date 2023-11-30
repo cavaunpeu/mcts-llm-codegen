@@ -1,7 +1,7 @@
 import torch
 import pytest
 
-from type import OutputTrie
+from app.type import OutputTrie
 
 
 @pytest.fixture
