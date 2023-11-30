@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# Build the app service
-docker-compose build app
-
-# Set the base command
-CMD="docker-compose run --rm app python main.py --remote"
+# Define the base command with the --build flag to ensure the image is built if necessary
+CMD="docker-compose run --rm app python -m app.main --remote"
 
 # Append test problem index to the command if provided
 if [ $# -eq 1 ]; then

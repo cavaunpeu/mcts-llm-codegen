@@ -1,1 +1,3 @@
-docker-compose up --build test
+#!/bin/bash
+
+docker-compose up test
