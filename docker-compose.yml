@@ -14,4 +14,4 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: pytest /root/test.py
+    command: python -m pytest /root/tests
