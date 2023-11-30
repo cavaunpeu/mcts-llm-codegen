@@ -10,7 +10,6 @@ import transformers
 
 from const import (
     APPS_PROBLEMS_DIR,
-    DEFAULT_WANDB_PROJECT_NAME,
     MAX_GEN_HORIZON,
     MODEL_NAME,
     NO_CUDA,

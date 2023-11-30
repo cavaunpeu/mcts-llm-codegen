@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Script to build and run Docker services with optional test problem index
-
 # Build the app service
 docker-compose build app
 
