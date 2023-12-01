@@ -79,7 +79,11 @@ class MCTS:
             config=config,
         )
         wandb.log(
-            {**result, "test_reward": test_reward, "device_name": self.ctx.device_name}
+            {
+                **result,
+                "test_reward": test_reward,
+                "device_name": None if self.dry else self.ctx.device_name,
+            }
         )
         wandb.finish()
 
