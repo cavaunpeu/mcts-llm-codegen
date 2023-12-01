@@ -1,7 +1,7 @@
 import torch
 import pytest
 
-from type import OutputTrie
+from app.type import OutputTrie
 
 
 @pytest.fixture
@@ -63,7 +63,5 @@ def test_next_token_only(trie, input_seq, output_seq, output_scores):
         assert result["sequence"] == seq[: (len(search_seq) + 1)]
         assert (
             result["scores"]
-            == output_scores[
-                -num_tokens_to_gen : -num_tokens_to_gen + 1 or None
-            ]  # noqa: E501
+            == output_scores[-num_tokens_to_gen : -num_tokens_to_gen + 1 or None]
         )

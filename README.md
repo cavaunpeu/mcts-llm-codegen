@@ -7,11 +7,11 @@ This repository contains a reimplementation of ["Planning with Large Language Mo
 1. First, clone this repository and submodules via: `git clone --recurse-submodules git@github.com:cavaunpeu/mcts-llm-codegen.git`.`
 2. Ensure that you have [Docker](https://docs.docker.com/desktop/install/mac-install/) installed.
 2. Follow Modal's simple setup instructions: `pip install modal && modal setup`. Once finished, you will have Modal credentials in `~/.modal.toml`. Modal offers you $30 of free compute credits per month, more than sufficient to run this code (on a remote GPU).
-3. **Finally, run: `chmod u+x run/* && run/app.sh`.** This will generate code for [APPS](https://huggingface.co/datasets/codeparrot/apps) dataset test problem 4136, by default. Currently, we only offer problems `0001, 0002, 0003, 0004, 0005, 4136`. To generate code for a different problem, run `run/app.sh <problem_id>`. For example, `run/app.sh 0001` will generate code for test problem 0001.
+3. **Finally, run: `chmod u+x run/* && run/app.sh`.** This will generate code for [APPS](https://huggingface.co/datasets/codeparrot/apps) dataset problem 4136, by default. Currently, we only offer problems `0001, 0002, 0003, 0004, 0005, 4136`. To generate code for a different problem, run `run/app.sh <problem_id>`. For example, `run/app.sh 0001` will generate code for problem 0001.
 
 ## What do you mean by code generation?
 
-The prompt for test problem 4136 is given below.
+The prompt for problem 4136 is given below.
 
 ```
 QUESTION:
@@ -86,7 +86,7 @@ Use 'docker scan' to run Snyk tests against images to find vulnerabilities and l
 ├── 🔨 Created mount /root/Code-AI-Tree-Search/eval/compute_reward.py
 ├── 🔨 Created mount /root/Code-AI-Tree-Search/eval/test_case_split.py
 └── 🔨 Created MCTS.run.
-Running MCTS on test problem 4136...
+Running MCTS on problem 4136...
 
 =============
 == PyTorch ==
@@ -159,6 +159,66 @@ In MCTS using LLMs, given some prefix state, we're doing both next token predict
 ## Running tests
 
 You can run tests (primarily against the `OutputTrie`) from within the Docker container by running `run/tests.sh`.
+
+## Running experiments
+
+### Setup
+
+1. [Sign up](https://wandb.ai/site) for a Weights and Biases account.
+2. Login into WandB on the machine you're running this code on via `wandb login`. This will allow the system to figure out which experiments to run.
+3. [Set](https://wandb.ai/authorize) your `WANDB_API_KEY` via the `wandb` secret in the Modal panel, as such:
+
+![](assets/wandb_secret.png)
+
+This will allow you to log experiment results to Weights and Biases.
+
+### Run
+
+1. Define an experiment config in app/config.py, e.g. "mcts-v1".
+2. Run `run/experiment.sh <experiment_config>`. For example, `run/experiment.sh mcts-v1`.
+
+## Experiment results
+
+The `mcts-v1` experiment iterates over the cross product of the following hyperparameters:
+
+- `problem_id`: The problem ID to run MCTS on. Currently, we only offer problems `0001, 0002, 0003, 0004, 0005, 4136`.
+- `num_rollouts`: The number of rollouts to perform per MCTS step. We use `[2, 3, 4, 5]`.
+- `model_size`: The size of the LLM to use. We use `gpt` models fine-tuned on code generation tasks of sizes 1.5B and 2.7B parameters. *These models are provided by the authors of the paper above; they are originally found [here](https://github.com/shunzh/Code-AI-Tree-Search#download-using-command-line).
+
+All LLM generation was performed on an `NVIDIA L4` GPU. The full experiment config is defined in `app/config.py`. The plot below shows the results of the 48 experiment runs (6 problems x 4 rollouts x 2 models):
+
+![](images/reward_tflops_plots.png)
+
+In order:
+
+1. The `train_reward` gives the *highest* reward achieved during training by any code sequence during training on the *train split* of the unit tests corresponding to the problem index in question.
+2. The `test_reward` gives the reward that the sequence produced *actually* achieved on the *test split* of the unit tests.
+3. In our implementation of this algorithm, we tally the number of seconds spent generating *full* code sequences. We then multiply this number of the number of floating point operations that the GPU used can perform per second. This gives us a rough estimate of the TFLOPS required to generate full sequences for each problem.
+4. Likewise, but for next token generation.
+
+Finally, for each of these statistics, we *average* the result across all (6) problems on which we run each hyperparameter configuration. This is what is plotted above.
+
+Next, we fit linear models to predict the (mean) test reward, (mean) TFLOPS required for sequence generation, and (mean) TFLOPS required for next token generation given `num_rollouts` and `model_size` (in billions of parameters). The results are shown below:
+
+![](images/model_fit_plots.png)
+
+Summing predictions from the latter two plots gives an estimate of the mean TFLOPS required (across all problems) for GPU LLM generation (sequence *and* next token) on an `NVIDIA L4` for a given `num_rollouts` and `model_size`. While, these operations are not the *only* operations required in our algorithm; they are the most experiment. To illustrate, we plot a histogram of the proportion of total elapsed time occupied by LLM generation in each run:
+
+![](images/gen_time_distribution.png)
+
+As these proportions are relatively high, for simplicity, we simply ignore (predicting) the remaining compute time in each run.
+
+Next, given more fine-grained search ranges for `num_rollouts` and `model_size`, we predict the test reward:
+
+![](images/rewards_heatmap.png)
+
+Finally, using the tools above, we seek to answer the question: **Given a fixed dollar and time budget, which (`num_rollouts`, `model_size`, `gpu`) gives us the highest expected reward?** We do this via the following logic:
+
+1. For each cell in the plot above, predict the number of TFLOPS required for LLM generation (sequence and next token). Once more, this estimate is for an `NVIDIA L4` GPU.
+2. Using the (FP32) TFLOPS/second statistic and the $/second statistic (as [provided](https://modal.com/pricing) by Modal) for a *set* of GPUs, compute the estimated (mean) dollar and time cost required. Then, multiply each by the number of problems (6) to get the total costs. Here, we only consider `NVIDIA T4` and `NVIDIA L4` GPUs.
+3. Create a grid from the predicted dollar and time extrema. At each point in that grid, remove configurations that exceed the dollar or time budget. Then, select the argmax configuration with respect to expected reward.
+
+![](images/final_heatmap.png)
 
 ## References
 

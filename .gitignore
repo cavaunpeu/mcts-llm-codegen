@@ -1,3 +1,7 @@
 .python-version
 models
 __pycache__
+wandb
+presentation.md
+.DS_Store
+.ipynb_checkpoints

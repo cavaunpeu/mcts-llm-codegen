@@ -9,9 +9,10 @@ services:
     mem_limit: 10g
     volumes:
       - ~/.modal.toml:/root/.modal.toml:ro
+      - ~/.netrc:/root/.netrc:ro
 
   test:
     build:
       context: .
       dockerfile: Dockerfile
-    command: pytest /root/test.py
+    command: python -m pytest /root/tests
