@@ -51,7 +51,9 @@ def plot_reward_tflops(agg_df):
     axes[0, 0].set_xlabel("Number of Rollouts")
     axes[0, 0].set_ylabel("Train Reward")
     axes[0, 0].set_ylim(0, max_reward * 1.1)
-    axes[0, 0].legend(title="Model Size", bbox_to_anchor=(1.05, 1), loc="upper left")
+    axes[0, 0].legend(
+        title="Model Size (B)", bbox_to_anchor=(1.05, 1), loc="upper left"
+    )
 
     # Second plot (Test Reward)
     sns.barplot(
@@ -61,7 +63,9 @@ def plot_reward_tflops(agg_df):
     axes[0, 1].set_xlabel("Number of Rollouts")
     axes[0, 1].set_ylabel("Test Reward")
     axes[0, 1].set_ylim(0, max_reward * 1.1)
-    axes[0, 1].legend(title="Model Size", bbox_to_anchor=(1.05, 1), loc="upper left")
+    axes[0, 1].legend(
+        title="Model Size (B)", bbox_to_anchor=(1.05, 1), loc="upper left"
+    )
 
     # Determine the y-axis limits for generation TFLOPS (Sequence and Next Token)
     max_tflops = max(
@@ -82,7 +86,9 @@ def plot_reward_tflops(agg_df):
     axes[1, 0].set_xlabel("Number of Rollouts")
     axes[1, 0].set_ylabel("Mean Sequence Generation TFLOPS per Problem")
     axes[1, 0].set_ylim(0, max_tflops * 1.1)
-    axes[1, 0].legend(title="Model Size", bbox_to_anchor=(1.05, 1), loc="upper left")
+    axes[1, 0].legend(
+        title="Model Size (B)", bbox_to_anchor=(1.05, 1), loc="upper left"
+    )
 
     # Fourth plot (Next Token TFLOPS)
     sns.barplot(
@@ -98,7 +104,9 @@ def plot_reward_tflops(agg_df):
     axes[1, 1].set_xlabel("Number of Rollouts")
     axes[1, 1].set_ylabel("Mean Next Token Generation TFLOPS per Problem")
     axes[1, 1].set_ylim(0, max_tflops * 1.1)
-    axes[1, 1].legend(title="Model Size", bbox_to_anchor=(1.05, 1), loc="upper left")
+    axes[1, 1].legend(
+        title="Model Size (B)", bbox_to_anchor=(1.05, 1), loc="upper left"
+    )
     plt.tight_layout()
     plt.savefig("images/reward_tflops_plots.png")
 
@@ -140,7 +148,7 @@ def plot_model_fits(agg_df, model_seq_gen, model_next_token_gen, model_test_rewa
     axes[0].set_title("Test Reward Model Fit")
     axes[0].set_xlabel("Number of Rollouts")
     axes[0].set_ylabel("Test Reward")
-    axes[0].legend(title="Model Size", loc="best")
+    axes[0].legend(title="Model Size (B)", loc="best")
     axes[0].text(
         0.25,
         0.05,
@@ -172,7 +180,7 @@ def plot_model_fits(agg_df, model_seq_gen, model_next_token_gen, model_test_rewa
     axes[1].set_title("Mean Sequence Generation TFLOPS Model Fit")
     axes[1].set_xlabel("Number of Rollouts")
     axes[1].set_ylabel("Mean Sequence Generation TFLOPS")
-    axes[1].legend(title="Model Size", loc="best")
+    axes[1].legend(title="Model Size (B)", loc="best")
     axes[1].text(
         0.25,
         0.05,
@@ -206,7 +214,7 @@ def plot_model_fits(agg_df, model_seq_gen, model_next_token_gen, model_test_rewa
     axes[2].set_title("Mean Next Token Generation TFLOPS Model Fit")
     axes[2].set_xlabel("Number of Rollouts")
     axes[2].set_ylabel("Mean Next Token Generation TFLOPS")
-    axes[2].legend(title="Model Size", loc="best")
+    axes[2].legend(title="Model Size (B)", loc="best")
     axes[2].text(
         0.25,
         0.05,
@@ -283,7 +291,7 @@ def plot_rewards_heatmap(
         cmap="viridis",
         cbar_kws={"label": "Predicted Reward"},
     )
-    plt.title("Heatmap of Predicted Reward")
+    plt.title("Heatmap of Predicted Test Reward")
     plt.xlabel("Model Size")
     plt.ylabel("Number of Rollouts")
     plt.savefig("images/rewards_heatmap.png")
@@ -411,8 +419,8 @@ def plot_budget_vs_optimal_setting_heatmap(costs_df):
     plt.title(
         "Heatmap of Predicted Test Reward\nAnnotated with: GPU, (num_rollouts, model_size)"
     )
-    plt.xlabel("Time Minutes Budget")
-    plt.ylabel("Dollar Cost Budget")
+    plt.xlabel("Time Budget (Minutes)")
+    plt.ylabel("Cost Budget ($)")
 
     # Round the tick labels to 3 significant digits
     ax.set_xticklabels(
